@@ -4,4 +4,4 @@ drf-yasg
 gunicorn
 whitenoise
 python-decouple
-django_filters
+django-filter
