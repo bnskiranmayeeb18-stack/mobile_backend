@@ -14,10 +14,14 @@ class Vehicle(models.Model):
     def __str__(self):
         return self.registration_number
 
-class DriverProfile(models.Model): # old name
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=100)
-    vehicle = models.OneToOneField(Vehicle, on_delete=models.CASCADE)
+class DriverProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=100, default='Unknown')
+    vehicle = models.OneToOneField(Vehicle, on_delete=models.CASCADE, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
 
     def __str__(self):
         return self.name

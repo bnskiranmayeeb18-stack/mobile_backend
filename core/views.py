@@ -15,12 +15,14 @@ class VehicleViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
 
 class DriverProfileViewSet(viewsets.ModelViewSet):
-    queryset = DriverProfile.objects.select_related('vehicle', 'vehicle__type').all()
     serializer_class = DriverProfileSerializer
-    permission_classes = [IsDriverOwnerOrAdmin]
 
-    # Task 5 - Nested Response
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return Response({"driver": serializer.data})
+    def get_queryset(self):
+        queryset = DriverProfile.objects.all()
+        is_active = self.request.query_params.get('is_active')
+        if is_active is not None:
+            if is_active.lower() == 'true':
+                queryset = queryset.filter(is_active=True)
+            elif is_active.lower() == 'false':
+                queryset = queryset.filter(is_active=False)
+        return queryset
