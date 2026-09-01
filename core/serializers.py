@@ -1,44 +1,22 @@
-import re
 from rest_framework import serializers
-from .models import DriverProfile, Vehicle, VehicleType, Ride, RideLocation
+from.models import VehicleType, Vehicle, DriverProfile
 
 class VehicleTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = VehicleType
-        fields = '__all__'
-
-class DriverProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DriverProfile
-        fields = '__all__'
+        fields = ['id', 'name']
 
 class VehicleSerializer(serializers.ModelSerializer):
+    type = VehicleTypeSerializer(read_only=True)
+    type_id = serializers.PrimaryKeyRelatedField(queryset=VehicleType.objects.all(), write_only=True, source='type')
+
     class Meta:
         model = Vehicle
-        fields = '__all__'
+        fields = ['id', 'type', 'type_id', 'registration_number']
 
-    def validate_vehicle_number(self, value):
-        pattern = r'^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$'
-        clean_value = value.replace(" ", "").upper()
-        if not re.match(pattern, clean_value):
-            raise serializers.ValidationError("Invalid vehicle registration number. Eg: AP05AB1234")
-        return clean_value
+class DriverProfileSerializer(serializers.ModelSerializer):
+    vehicle = VehicleSerializer(read_only=True)
 
-    def validate(self, data):
-        if self.instance is None: # Create time lo mathrame duplicate check
-            if Vehicle.objects.filter(
-                driver=data.get('driver'),
-                vehicle_number=data.get('vehicle_number')
-            ).exists():
-                raise serializers.ValidationError("Duplicate vehicle for this driver")
-        return data
-
-class RideSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Ride
-        fields = '__all__'
-
-class RideLocationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RideLocation
-        fields = '__all__'
+        model = DriverProfile
+        fields = ['id', 'name', 'vehicle']
