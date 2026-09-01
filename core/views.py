@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from .permissions import IsAdminOrReadOnly, IsDriverOwnerOrAdmin
 from .models import DriverProfile, Vehicle, VehicleType, Ride, RideLocation
 from .serializers import (
     DriverProfileSerializer,
@@ -11,10 +12,12 @@ from .serializers import (
 class DriverProfileViewSet(viewsets.ModelViewSet):
     queryset = DriverProfile.objects.all()
     serializer_class = DriverProfileSerializer
+    permission_classes = [IsAdminOrReadOnly]
 
 class VehicleViewSet(viewsets.ModelViewSet):
     queryset = Vehicle.objects.all()
     serializer_class = VehicleSerializer
+    permission_classes = [IsDriverOwnerOrAdmin]
 
 class VehicleTypeViewSet(viewsets.ModelViewSet):
     queryset = VehicleType.objects.all()
