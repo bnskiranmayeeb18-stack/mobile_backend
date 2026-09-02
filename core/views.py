@@ -1,28 +1,45 @@
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from.models import VehicleType, Vehicle, DriverProfile
-from.serializers import VehicleTypeSerializer, VehicleSerializer, DriverProfileSerializer
-from.permissions import IsAdminOrReadOnly, IsDriverOwnerOrAdmin
-
-class VehicleTypeViewSet(viewsets.ModelViewSet):
-    queryset = VehicleType.objects.all()
-    serializer_class = VehicleTypeSerializer
-    permission_classes = [IsAdminOrReadOnly]
+from rest_framework.permissions import IsAuthenticated
+from.models import Ride, DriverProfile
+from.serializers import RideSerializer, DriverProfileSerializer, VehicleSerializer
+from.models import Vehicle
 
 class VehicleViewSet(viewsets.ModelViewSet):
     queryset = Vehicle.objects.all()
     serializer_class = VehicleSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
 class DriverProfileViewSet(viewsets.ModelViewSet):
+    queryset = DriverProfile.objects.all()
     serializer_class = DriverProfileSerializer
+    permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        queryset = DriverProfile.objects.all()
-        is_active = self.request.query_params.get('is_active')
-        if is_active is not None:
-            if is_active.lower() == 'true':
-                queryset = queryset.filter(is_active=True)
-            elif is_active.lower() == 'false':
-                queryset = queryset.filter(is_active=False)
-        return queryset
+class RideViewSet(viewsets.ModelViewSet):
+    queryset = Ride.objects.all()
+    serializer_class = RideSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=True, methods=['post'], url_path='accept')
+    def accept_ride(self, request, pk=None):
+        ride = self.get_object()
+        # Ride already accepted aithe 200 ivvu, 403 kadu
+        if ride.status == 'accepted' and ride.driver:
+            return Response({"id": ride.id, "status": ride.status, "driver": ride.driver.user.username, "message": "Already accepted"})
+
+        driver, _ = DriverProfile.objects.get_or_create(
+            user=request.user,
+            defaults={'license_number': 'AUTO123', 'phone': '9999999999', 'is_available': True, 'is_active': True}
+        )
+        ride.driver = driver
+        ride.status = 'accepted'
+        ride.save()
+        return Response({"id": ride.id, "status": "accepted", "driver": request.user.username})
+
+    @action(detail=True, methods=['post'], url_path='complete')
+    def complete_ride(self, request, pk=None):
+        ride = self.get_object()
+        ride.status = 'completed'
+        ride.save()
+        return Response({"id": ride.id, "status": "completed"})
