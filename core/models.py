@@ -13,8 +13,36 @@ class DriverProfile(models.Model):
     def __str__(self): return self.name
 
 class Ride(models.Model):
-    STATUS = [('pending','pending'),('accepted','accepted'),('cancelled','cancelled'),('completed','completed')]
+    class Status(models.TextChoices):
+        REQUESTED = 'REQUESTED', 'Requested'
+        ACCEPTED = 'ACCEPTED', 'Accepted'
+        DRIVER_ARRIVING = 'DRIVER_ARRIVING', 'Driver Arriving'
+        STARTED = 'STARTED', 'Started'
+        COMPLETED = 'COMPLETED', 'Completed'
+        CANCELLED = 'CANCELLED', 'Cancelled'
+
+    STATUS_TRANSITIONS = {
+        'REQUESTED': ['ACCEPTED', 'CANCELLED'],
+        'ACCEPTED': ['DRIVER_ARRIVING', 'CANCELLED'],
+        'DRIVER_ARRIVING': ['STARTED'],
+        'STARTED': ['COMPLETED'],
+        'COMPLETED': [],
+        'CANCELLED': [],
+    }
+
+    RIDE_TYPES = [('standard','standard'),('premium','premium'),('shared','shared')]
+
     customer_name = models.CharField(max_length=100)
-    status = models.CharField(max_length=20, choices=STATUS, default='pending')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.REQUESTED)
     driver = models.ForeignKey(DriverProfile, null=True, blank=True, on_delete=models.SET_NULL, related_name='rides')
-    def __str__(self): return f"{self.customer_name} - {self.status}"
+    pickup_location = models.CharField(max_length=255, default="Unknown")
+    drop_location = models.CharField(max_length=255, default="Unknown")
+    ride_type = models.CharField(max_length=20, choices=RIDE_TYPES, default='standard')
+    passenger_info = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    def can_transition_to(self, new_status):
+        return new_status in self.STATUS_TRANSITIONS.get(self.status, [])
+
+    def __str__(self):
+        return f"{self.customer_name} - {self.status}"
