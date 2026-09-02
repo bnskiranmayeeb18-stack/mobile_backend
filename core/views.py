@@ -1,45 +1,79 @@
 from rest_framework import viewsets
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from.models import Ride, DriverProfile
-from.serializers import RideSerializer, DriverProfileSerializer, VehicleSerializer
-from.models import Vehicle
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.exceptions import NotFound, ValidationError
+from .models import Vehicle, DriverProfile, Ride
+from .serializers import VehicleSerializer, DriverProfileSerializer, RideSerializer
+
+
+class CustomPagination(PageNumberPagination):
+    page_size = 1
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 
 class VehicleViewSet(viewsets.ModelViewSet):
-    queryset = Vehicle.objects.all()
+    queryset = Vehicle.objects.all().order_by('id')
     serializer_class = VehicleSerializer
-    permission_classes = [IsAuthenticated]
+    pagination_class = CustomPagination
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            return super().retrieve(request, *args, **kwargs)
+        except:
+            raise NotFound(
+                {"error": "Vehicle not found", "detail": "Vehicle with given ID does not exist", "status_code": 404})
+
+    def create(self, request, *args, **kwargs):
+        reg = request.data.get('registration_number')
+        if reg and Vehicle.objects.filter(registration_number=reg).exists():
+            raise ValidationError(
+                {"error": "Duplicate registration", "detail": "Vehicle already exists", "status_code": 400})
+        return super().create(request, *args, **kwargs)
+
 
 class DriverProfileViewSet(viewsets.ModelViewSet):
-    queryset = DriverProfile.objects.all()
+    queryset = DriverProfile.objects.all().order_by('id')
     serializer_class = DriverProfileSerializer
-    permission_classes = [IsAuthenticated]
+    pagination_class = CustomPagination
+    filterset_fields = ['is_active']
+    search_fields = ['name']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        is_active = self.request.query_params.get('is_active')
+        if is_active is not None:
+            if is_active.lower() == 'true':
+                queryset = queryset.filter(is_active=True)
+            elif is_active.lower() == 'false':
+                queryset = queryset.filter(is_active=False)
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+        return queryset
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            return super().retrieve(request, *args, **kwargs)
+        except:
+            raise NotFound(
+                {"error": "Driver not found", "detail": "Driver with given ID does not exist", "status_code": 404})
+
+    def create(self, request, *args, **kwargs):
+        name = request.data.get('name')
+        if name and DriverProfile.objects.filter(name=name).exists():
+            raise ValidationError({"error": "Duplicate registration", "detail": "Driver with this name already exists",
+                                   "status_code": 400})
+        return super().create(request, *args, **kwargs)
+
 
 class RideViewSet(viewsets.ModelViewSet):
-    queryset = Ride.objects.all()
+    queryset = Ride.objects.all().order_by('id')
     serializer_class = RideSerializer
-    permission_classes = [IsAuthenticated]
+    pagination_class = CustomPagination
 
-    @action(detail=True, methods=['post'], url_path='accept')
-    def accept_ride(self, request, pk=None):
-        ride = self.get_object()
-        # Ride already accepted aithe 200 ivvu, 403 kadu
-        if ride.status == 'accepted' and ride.driver:
-            return Response({"id": ride.id, "status": ride.status, "driver": ride.driver.user.username, "message": "Already accepted"})
-
-        driver, _ = DriverProfile.objects.get_or_create(
-            user=request.user,
-            defaults={'license_number': 'AUTO123', 'phone': '9999999999', 'is_available': True, 'is_active': True}
-        )
-        ride.driver = driver
-        ride.status = 'accepted'
-        ride.save()
-        return Response({"id": ride.id, "status": "accepted", "driver": request.user.username})
-
-    @action(detail=True, methods=['post'], url_path='complete')
-    def complete_ride(self, request, pk=None):
-        ride = self.get_object()
-        ride.status = 'completed'
-        ride.save()
-        return Response({"id": ride.id, "status": "completed"})
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            return super().retrieve(request, *args, **kwargs)
+        except:
+            raise NotFound(
+                {"error": "Ride not found", "detail": "Ride with given ID does not exist", "status_code": 404})
