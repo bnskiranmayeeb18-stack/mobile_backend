@@ -1,0 +1,65 @@
+{
+  "info": {
+    "_postman_id": "0bf6d24c-1a73-434d-8b99-d1d131623232",
+    "name": "EPIC 02 - Mobile Backend - Task 8 - Postman Testing",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "56784593",
+    "_collection_link": "https://go.postman.co/collection/56784593-0bf6d24c-1a73-434d-8b99-d1d131623232?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "1. Positive - Get All Drivers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/drivers/",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "drivers",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3. Filtering - is_active=true",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/drivers/?is_active=true",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "drivers",
+            ""
+          ],
+          "query": [
+            {
+              "key": "is_active",
+              "value": "true"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
