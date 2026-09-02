@@ -32,13 +32,16 @@ class Ride(models.Model):
 
     RIDE_TYPES = [('standard','standard'),('premium','premium'),('shared','shared')]
 
-    customer_name = models.CharField(max_length=100)
+    customer_name = models.CharField(max_length=100, default="Test User")
+    user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='rides_as_user')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.REQUESTED)
     driver = models.ForeignKey(DriverProfile, null=True, blank=True, on_delete=models.SET_NULL, related_name='rides')
     pickup_location = models.CharField(max_length=255, default="Unknown")
     drop_location = models.CharField(max_length=255, default="Unknown")
     ride_type = models.CharField(max_length=20, choices=RIDE_TYPES, default='standard')
-    fare = models.IntegerField(default=0)  # <--- IDHI IKKADA UNDALI, paine Status lo kadu!
+    fare = models.IntegerField(default=0)
+    distance_km = models.FloatField(default=5.0)
+    duration_min = models.FloatField(default=10.0)
     passenger_info = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
 
