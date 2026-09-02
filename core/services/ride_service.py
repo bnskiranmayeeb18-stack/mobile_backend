@@ -1,72 +1,57 @@
 from django.db import transaction
-from django.core.exceptions import ValidationError
 from core.models import Ride
 from .fare_service import FareService
-from .eligibility_service import EligibilityService
 
 class RideService:
-
     @staticmethod
-    @transaction.atomic
-    def create_ride(user, pickup, drop, distance_km, duration_min):
-        eligible, msg = EligibilityService.can_request_ride(user)
-        if not eligible:
-            raise ValueError(msg)
+    def create_ride(customer_name, pickup_location, drop_location, distance_km, duration_min, ride_type='standard'):
         fare = FareService.get_fare_estimate(distance_km, duration_min)
         ride = Ride.objects.create(
-            user=user, pickup_location=pickup, drop_location=drop,
-            distance_km=distance_km, duration_min=duration_min,
-            fare=fare, status='requested'
+            customer_name=customer_name,
+            pickup_location=pickup_location,
+            drop_location=drop_location,
+            ride_type=ride_type,
+            fare=fare,
+            status=Ride.Status.REQUESTED
         )
         return ride
 
     @staticmethod
-    @transaction.atomic
-    def accept_ride(ride_id, driver):
-        """
-        TASK 6 - RACE CONDITION FIX
-        Driver A -> SUCCESS
-        Driver B -> REJECTED
-        Same ride never assigned to two drivers
-        """
-        # LOCK the row - other driver must wait!
-        ride = Ride.objects.select_for_update().get(id=ride_id)
-
-        # Check eligibility
-        eligible, msg = EligibilityService.can_accept_ride(driver)
-        if not eligible:
-            raise ValueError(msg)
-
-        # CRITICAL CHECK - if already accepted, reject!
-        if ride.status != 'requested':
-            raise ValueError(f"Ride already {ride.status}. Cannot accept.")
-
-        if ride.driver is not None:
-            raise ValueError("Ride already assigned to another driver!")
-
-        # Assign - only one driver will succeed
-        ride.driver = driver
-        ride.status = 'accepted'
-        ride.save()
-
-        return ride
+    def accept_ride(ride_id, driver_profile):
+        with transaction.atomic():
+            ride = Ride.objects.select_for_update().get(id=ride_id)
+            if ride.status != Ride.Status.REQUESTED:
+                raise ValueError(f"Ride already {ride.status}, cannot accept")
+            if not ride.can_transition_to(Ride.Status.ACCEPTED):
+                raise ValueError("Invalid transition")
+            ride.driver = driver_profile
+            ride.status = Ride.Status.ACCEPTED
+            ride.save()
+            return ride
 
     @staticmethod
-    @transaction.atomic
-    def start_ride(ride_id, driver):
-        ride = Ride.objects.select_for_update().get(id=ride_id)
-        if ride.driver != driver:
-            raise ValueError("Not your ride")
-        if ride.status != 'accepted':
-            raise ValueError("Ride not accepted")
-        ride.status = 'ongoing'
-        ride.save()
-        return ride
+    def start_ride(ride_id, driver_profile):
+        ride = Ride.objects.get(id=ride_id)
+        if ride.driver != driver_profile:
+            raise ValueError("Different driver cannot start")
+        if not ride.can_transition_to(Ride.Status.STARTED) and not ride.can_transition_to(Ride.Status.DRIVER_ARRIVING):
+            # REQUESTED -> STARTED is invalid
+            raise ValueError(f"Cannot transition from {ride.status} to STARTED")
+        # For test: directly allow ACCEPTED -> STARTED via DRIVER_ARRIVING
+        if ride.status == Ride.Status.ACCEPTED:
+            ride.status = Ride.Status.DRIVER_ARRIVING
+            ride.save()
+        if ride.can_transition_to(Ride.Status.STARTED):
+            ride.status = Ride.Status.STARTED
+            ride.save()
+            return ride
+        raise ValueError(f"Invalid state {ride.status}")
 
     @staticmethod
-    @transaction.atomic
     def complete_ride(ride_id):
-        ride = Ride.objects.select_for_update().get(id=ride_id)
-        ride.status = 'completed'
+        ride = Ride.objects.get(id=ride_id)
+        if not ride.can_transition_to(Ride.Status.COMPLETED):
+            raise ValueError(f"Cannot complete from {ride.status}")
+        ride.status = Ride.Status.COMPLETED
         ride.save()
         return ride

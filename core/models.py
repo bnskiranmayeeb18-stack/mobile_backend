@@ -38,6 +38,7 @@ class Ride(models.Model):
     pickup_location = models.CharField(max_length=255, default="Unknown")
     drop_location = models.CharField(max_length=255, default="Unknown")
     ride_type = models.CharField(max_length=20, choices=RIDE_TYPES, default='standard')
+    fare = models.IntegerField(default=0)  # <--- IDHI IKKADA UNDALI, paine Status lo kadu!
     passenger_info = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
 
