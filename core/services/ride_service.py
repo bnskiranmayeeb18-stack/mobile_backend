@@ -1,16 +1,17 @@
+from django.db import transaction
 from core.models import Ride
-from .fare_service import FareService
-from .eligibility_service import EligibilityService
-
+from.fare_service import FareService
+from.eligibility_service import EligibilityService
 
 class RideService:
     @staticmethod
+    @transaction.atomic
     def create_ride(user, pickup, drop, distance_km, duration_min):
         eligible, msg = EligibilityService.can_request_ride(user)
         if not eligible:
             raise ValueError(msg)
 
-        fare = FareService.calculate_fare(distance_km, duration_min)
+        fare = FareService.get_fare_estimate(distance_km, duration_min)
 
         ride = Ride.objects.create(
             user=user,
@@ -24,26 +25,21 @@ class RideService:
         return ride
 
     @staticmethod
+    @transaction.atomic
     def accept_ride(ride_id, driver):
         eligible, msg = EligibilityService.can_accept_ride(driver)
         if not eligible:
             raise ValueError(msg)
-        ride = Ride.objects.get(id=ride_id)
+        ride = Ride.objects.select_for_update().get(id=ride_id)
         ride.driver = driver
         ride.status = 'accepted'
         ride.save()
         return ride
 
     @staticmethod
-    def start_ride(ride_id):
-        ride = Ride.objects.get(id=ride_id)
-        ride.status = 'started'
-        ride.save()
-        return ride
-
-    @staticmethod
+    @transaction.atomic
     def complete_ride(ride_id):
-        ride = Ride.objects.get(id=ride_id)
+        ride = Ride.objects.select_for_update().get(id=ride_id)
         ride.status = 'completed'
         ride.save()
         return ride
