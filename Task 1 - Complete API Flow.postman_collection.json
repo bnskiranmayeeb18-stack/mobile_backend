@@ -1,0 +1,262 @@
+{
+  "info": {
+    "_postman_id": "0f291331-1f38-46b3-8196-682ef1ddf324",
+    "name": "Task 1 - Complete API Flow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "56784593",
+    "_collection_link": "https://go.postman.co/collection/56784593-0f291331-1f38-46b3-8196-682ef1ddf324?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "task-1-01-register-customer-201",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"username\": \"kiran.task1\",\r\n  \"password\": \"Test@123\",\r\n  \"phone\": \"9876543210\",\r\n  \"email\": \"kiran.task1@gmail.com\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/register/",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "register",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "task-1-02-login-customer-200",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n \"username\": \"kiran_customer1\",\r\n  \"password\": \"Test@1234\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/login/",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "login",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "task-1-03-create-ride-201-id-4",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Token 1823e2ea58377c8d8af8e4c3e9da43103ac76c9e"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"pickup_location\": \"Ameerpet\",\r\n  \"drop_location\": \"Hitech City\",\r\n  \"distance_km\": 8,\r\n  \"duration_min\": 15\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/rides/request/",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "rides",
+            "request",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "task-1-04-register-driver-201",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"username\": \"kiran_driver1\",\r\n  \"password\": \"Test@123\",\r\n  \"phone\": \"9876543211\",\r\n  \"full_name\": \"Kiran Driver\",\r\n  \"role\": \"driver\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/register/",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "register",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "task-1-05-login-driver-200",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"username\": \"kiran_driver1\",\r\n  \"password\": \"Test@123\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/login/",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "login",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "New Request",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "task-1-06-fare-estimate-201",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Token bc7e0733caac4ad83f385e55c2453d4c079e210d"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"pickup_lat\": 17.4399,\r\n  \"pickup_lng\": 78.4441,\r\n  \"drop_lat\": 17.4474,\r\n  \"drop_lng\": 78.3762\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/fare-estimate/",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "fare-estimate",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "task-1-07-cancel-ride-200",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Token bc7e0733caac4ad83f385e55c2453d4c079e210d"
+          }
+        ],
+        "url": {
+          "raw": "http://127.0.0.1:8000/api/rides/6/cancel/",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "rides",
+            "6",
+            "cancel",
+            ""
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
