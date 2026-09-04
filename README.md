@@ -39,3 +39,5 @@ All APIs tested via Postman and Swagger - Working ✅
 
 ## Status
 Sprint 9 (29/6 - 12/7) - Completed ✅
+Ride Flow: REQUESTED -> ACCEPTED -> ONGOING -> COMPLETED working with PATCH /api/rides/1/status/ and fare estimate 250 for Nellore-Tirupati
+- ride_collection.json - Ride lifecycle (REQUESTED->COMPLETED)
