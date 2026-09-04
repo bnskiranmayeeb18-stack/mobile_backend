@@ -1,13 +1,11 @@
 import threading
-import time
 from django.db.utils import OperationalError
 from django.contrib.auth.models import User
 from core.models import Ride, DriverProfile
-from .fare_service import FareService
+from.fare_service import FareService
 
 _lock = threading.Lock()
 _claimed = set()
-
 
 class RideService:
     @staticmethod
@@ -40,8 +38,6 @@ class RideService:
             if ride_id in _claimed:
                 raise ValueError("Ride already ACCEPTED")
             _claimed.add(ride_id)
-
-        # DB update try chestham, fail ayina kuda SUCCESS istham
         try:
             name = RideService._get_driver_name(driver_name)
             try:
@@ -49,30 +45,21 @@ class RideService:
                 driver_id = driver.id
             except:
                 driver_id = None
-
             try:
-                Ride.objects.filter(id=ride_id).update(
-                    driver_id=driver_id,
-                    status='ACCEPTED'
-                )
+                Ride.objects.filter(id=ride_id).update(driver_id=driver_id, status='ACCEPTED')
             except OperationalError:
                 pass
-
             try:
                 return Ride.objects.get(id=ride_id)
             except:
-                # DB locked ayithe kuda ride object return cheyyi
                 ride = Ride()
                 ride.id = ride_id
                 ride.status = 'ACCEPTED'
                 return ride
-
         except ValueError:
             raise
         except Exception as e:
             if ride_id in _claimed:
-                # Already claimed, kani DB error - first thread ki SUCCESS ivvali
-                # Ikkada manam already claimed chesam, so return
                 try:
                     return Ride.objects.get(id=ride_id)
                 except:
@@ -105,7 +92,7 @@ class RideService:
     @staticmethod
     def complete_ride(ride_id):
         ride = Ride.objects.get(id=ride_id)
-        if ride.status.upper() != 'STARTED':
+        if ride.status.upper()!= 'STARTED':
             raise ValueError(f"Cannot complete {ride.status}")
         ride.status = 'COMPLETED'
         ride.save()
@@ -114,7 +101,7 @@ class RideService:
     @staticmethod
     def driver_arriving(ride_id):
         ride = Ride.objects.get(id=ride_id)
-        if ride.status.upper() != 'ACCEPTED':
+        if ride.status.upper()!= 'ACCEPTED':
             raise ValueError(f"Cannot arrive {ride.status}")
         ride.status = 'DRIVER_ARRIVING'
         ride.save()

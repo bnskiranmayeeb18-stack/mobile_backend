@@ -1,0 +1,2 @@
+STATUS: 403
+{"detail":"Authentication credentials were not provided."}
