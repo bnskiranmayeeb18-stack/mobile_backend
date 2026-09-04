@@ -1,37 +1,68 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from.services.fare_service import FareService
-from.services.ride_service import RideService
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
+from.models import Ride
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_customer(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    email = request.data.get('email', '')
+    if not username or not password:
+        return Response({"error": "username and password required"}, status=400)
+    if User.objects.filter(username=username).exists():
+        return Response({"error": "user already exists"}, status=400)
+    user = User.objects.create_user(username=username, password=password, email=email)
+    return Response({"id": user.id, "username": user.username}, status=201)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_view(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    if not username or not password:
+        return Response({"error": "username and password required"}, status=400)
+    user = authenticate(username=username, password=password)
+    if not user:
+        return Response({"error": "invalid credentials"}, status=400)
+    token, _ = Token.objects.get_or_create(user=user)
+    return Response({"token": token.key}, status=200)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def request_ride(request):
-    try:
-        data = request.data
-        ride = RideService.create_ride(
-            customer_name=request.user.username,
-            pickup_location=data.get('pickup_location'),
-            drop_location=data.get('drop_location'),
-            distance_km=float(data.get('distance_km', 0)),
-            duration_min=float(data.get('duration_min', 0))
-        )
-        return Response({"id": ride.id, "fare": ride.fare, "status": ride.status})
-    except ValueError as e:
-        return Response({"error": str(e)}, status=400)
+def create_ride(request):
+    user = request.user
+    ride = Ride.objects.create(user=user, customer=user, status='REQUESTED')
+    return Response({"id": ride.id, "status": ride.status}, status=201)
 
-@api_view(['POST'])
-def ride_fare_api(request):
-    distance = float(request.data.get('distance_km', 8))
-    duration = float(request.data.get('duration_min', 10))
-    total_fare = FareService.get_fare_estimate(distance, duration)
-    return Response({"total": total_fare})
-
-@api_view(['POST'])
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def cancel_ride_api(request, ride_id):
+def ride_detail(request, ride_id):
     try:
-        ride = RideService.cancel_ride(ride_id, request.user)
-        return Response({"message": "Cancelled", "status": ride.status})
-    except Exception as e:
-        return Response({"error": str(e)}, status=400)
+        ride = Ride.objects.get(id=ride_id)
+    except Ride.DoesNotExist:
+        return Response({"error": "Ride not found"}, status=404)
+    return Response({"id": ride.id, "customer": ride.customer.username if ride.customer else None, "status": ride.status}, status=200)
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def ride_status_update(request, ride_id):
+    try:
+        ride = Ride.objects.get(id=ride_id)
+    except Ride.DoesNotExist:
+        return Response({"error": "Ride not found"}, status=404)
+    new_status = request.data.get('status')
+    old_status = ride.status
+    if old_status == 'COMPLETED' and new_status == 'STARTED':
+        return Response({"error": "Cannot transition COMPLETED->STARTED"}, status=400)
+    if old_status == 'CANCELLED':
+        return Response({"error": "Cannot transition from CANCELLED"}, status=400)
+    if old_status == 'COMPLETED' and new_status == 'CANCELLED':
+        return Response({"error": "Cannot cancel completed ride"}, status=400)
+    ride.status = new_status
+    ride.save()
+    return Response({"id": ride.id, "old_status": old_status, "new_status": ride.status}, status=200)
