@@ -1,0 +1,135 @@
+{
+  "info": {
+    "name": "Task6 - Ride Booking API Automation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication - Login Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status is 200\", function(){ pm.response.to.have.status(200); });",
+              "pm.test(\"Has token\", function(){ pm.expect(pm.response.json()).to.have.property('token'); });",
+              "var json = pm.response.json(); pm.collectionVariables.set('authToken', json.token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/login/",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\"username\":\"customer1\",\"password\":\"Test@12345\"}"}
+      }
+    },
+    {
+      "name": "2. User - Register Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test(\"Register 201\", function(){ pm.expect(pm.response.code).to.be.oneOf([200,201]); });"]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/register/",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\"username\":\"newuser_{{$timestamp}}\",\"password\":\"Test@123\",\"email\":\"new@test.com\"}"}
+      }
+    },
+    {
+      "name": "3. Driver User Exists - Check Auth User",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/rides/1/",
+        "header": [{"key": "Authorization", "value": "Token {{authToken}}"}]
+      }
+    },
+    {
+      "name": "4. Vehicle Ride Model - Ride Create",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Ride created 201\", function(){ pm.response.to.have.status(201); });",
+              "var json = pm.response.json(); pm.collectionVariables.set('rideId', json.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/rides/create/",
+        "header": [{"key": "Authorization", "value": "Token {{authToken}}"}]
+      }
+    },
+    {
+      "name": "5. Ride Create Success",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/rides/create/",
+        "header": [{"key": "Authorization", "value": "Token {{authToken}}"}]
+      }
+    },
+    {
+      "name": "6. Fare Ride Detail",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test(\"Ride detail 200\", function(){ pm.response.to.have.status(200); });"]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/rides/{{rideId}}/",
+        "header": [{"key": "Authorization", "value": "Token {{authToken}}"}]
+      }
+    },
+    {
+      "name": "7. Permissions 401 Without Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test(\"Should be 401\", function(){ pm.response.to.have.status(401); });"]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/rides/create/",
+        "header": []
+      }
+    },
+    {
+      "name": "8. Invalid Requests 400",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test(\"Should be 400\", function(){ pm.response.to.have.status(400); });"]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/register/",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\"username\":\"\"}"}
+      }
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "http://127.0.0.1:8000"},
+    {"key": "authToken", "value": ""},
+    {"key": "rideId", "value": "1"}
+  ]
+}
