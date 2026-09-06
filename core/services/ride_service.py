@@ -1,108 +1,106 @@
-import threading
-from django.db.utils import OperationalError
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
 from django.contrib.auth.models import User
-from core.models import Ride, DriverProfile
-from.fare_service import FareService
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
+from.models import Ride # <-- space fix
 
-_lock = threading.Lock()
-_claimed = set()
+# Complete State Machine for EPIC 3
+INVALID_TRANSITIONS = {
+    ('COMPLETED', 'STARTED'),
+    ('COMPLETED', 'CANCELLED'),
+    ('COMPLETED', 'REQUESTED'),
+    ('COMPLETED', 'ACCEPTED'),
+    ('CANCELLED', 'STARTED'),
+    ('CANCELLED', 'COMPLETED'),
+    ('CANCELLED', 'ACCEPTED'),
+    ('REQUESTED', 'COMPLETED'), # Direct jump not allowed
+}
 
-class RideService:
-    @staticmethod
-    def create_ride(customer_name, pickup_location, drop_location, distance_km=5, duration_min=10):
-        fare = FareService.get_fare_estimate(distance_km, duration_min)
-        ride = Ride.objects.create(
-            customer_name=customer_name,
-            pickup_location=pickup_location,
-            drop_location=drop_location,
-            fare=int(fare),
-            ride_type='standard',
-            status='REQUESTED',
-            distance_km=distance_km,
-            duration_min=duration_min
-        )
-        with _lock:
-            if ride.id in _claimed:
-                _claimed.remove(ride.id)
-        return ride
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_customer(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    email = request.data.get('email', '')
 
-    @staticmethod
-    def _get_driver_name(driver_input):
-        if isinstance(driver_input, User):
-            return driver_input.username
-        return str(driver_input)
+    if not username or not password:
+        return Response({"error": "username and password required"}, status=400)
 
-    @staticmethod
-    def accept_ride(ride_id, driver_name):
-        with _lock:
-            if ride_id in _claimed:
-                raise ValueError("Ride already ACCEPTED")
-            _claimed.add(ride_id)
-        try:
-            name = RideService._get_driver_name(driver_name)
-            try:
-                driver, _ = DriverProfile.objects.get_or_create(name=name)
-                driver_id = driver.id
-            except:
-                driver_id = None
-            try:
-                Ride.objects.filter(id=ride_id).update(driver_id=driver_id, status='ACCEPTED')
-            except OperationalError:
-                pass
-            try:
-                return Ride.objects.get(id=ride_id)
-            except:
-                ride = Ride()
-                ride.id = ride_id
-                ride.status = 'ACCEPTED'
-                return ride
-        except ValueError:
-            raise
-        except Exception as e:
-            if ride_id in _claimed:
-                try:
-                    return Ride.objects.get(id=ride_id)
-                except:
-                    ride = Ride()
-                    ride.id = ride_id
-                    ride.status = 'ACCEPTED'
-                    return ride
-            raise ValueError(str(e))
+    if User.objects.filter(username=username).exists():
+        return Response({"error": "user already exists"}, status=400)
 
-    @staticmethod
-    def cancel_ride(ride_id, user=None):
+    user = User.objects.create_user(username=username, password=password, email=email)
+    return Response({"id": user.id, "username": user.username}, status=201)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_view(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    if not username or not password:
+        return Response({"error": "username and password required"}, status=400)
+
+    user = authenticate(username=username, password=password)
+    if not user:
+        return Response({"error": "invalid credentials"}, status=400)
+
+    token, _ = Token.objects.get_or_create(user=user)
+    return Response({"token": token.key}, status=200)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_ride(request):
+    # user field lekapothe error vastundi - nee Ride model photo pampu
+    ride = Ride.objects.create(
+        customer=request.user,
+        status='REQUESTED'
+    )
+    return Response({"id": ride.id, "status": ride.status}, status=201)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ride_detail(request, ride_id):
+    try:
+        ride = Ride.objects.select_related('customer').get(id=ride_id)
+    except Ride.DoesNotExist:
+        return Response({"error": "Ride not found"}, status=404)
+
+    if ride.customer!= request.user:
+        return Response({"error": "Permission denied"}, status=403)
+
+    return Response({
+        "id": ride.id,
+        "customer": ride.customer.username if ride.customer else None,
+        "status": ride.status
+    }, status=200)
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def ride_status_update(request, ride_id):
+    try:
         ride = Ride.objects.get(id=ride_id)
-        if ride.status.upper() not in ['REQUESTED', 'ACCEPTED']:
-            raise ValueError(f"Cannot cancel {ride.status}")
-        ride.status = 'CANCELLED'
-        ride.save()
-        with _lock:
-            _claimed.discard(ride_id)
-        return ride
+    except Ride.DoesNotExist:
+        return Response({"error": "Ride not found"}, status=404)
 
-    @staticmethod
-    def start_ride(ride_id, driver=None):
-        ride = Ride.objects.get(id=ride_id)
-        if ride.status.upper() not in ['ACCEPTED', 'DRIVER_ARRIVING']:
-            raise ValueError(f"Cannot start {ride.status}")
-        ride.status = 'STARTED'
-        ride.save()
-        return ride
+    new_status = request.data.get('status')
+    if not new_status:
+        return Response({"error": "status field required"}, status=400)
 
-    @staticmethod
-    def complete_ride(ride_id):
-        ride = Ride.objects.get(id=ride_id)
-        if ride.status.upper()!= 'STARTED':
-            raise ValueError(f"Cannot complete {ride.status}")
-        ride.status = 'COMPLETED'
-        ride.save()
-        return ride
+    old_status = ride.status
 
-    @staticmethod
-    def driver_arriving(ride_id):
-        ride = Ride.objects.get(id=ride_id)
-        if ride.status.upper()!= 'ACCEPTED':
-            raise ValueError(f"Cannot arrive {ride.status}")
-        ride.status = 'DRIVER_ARRIVING'
-        ride.save()
-        return ride
+    if old_status == 'CANCELLED':
+        return Response({"error": "Cannot transition from CANCELLED"}, status=400)
+
+    if (old_status, new_status) in INVALID_TRANSITIONS:
+        return Response({"error": f"Cannot transition {old_status}->{new_status}"}, status=400)
+
+    ride.status = new_status
+    ride.save()
+
+    return Response({
+        "id": ride.id,
+        "old_status": old_status,
+        "new_status": ride.status
+    }, status=200)
