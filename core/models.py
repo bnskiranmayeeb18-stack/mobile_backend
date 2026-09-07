@@ -1,21 +1,20 @@
 from django.db import models
-from django.contrib.auth.models import User
 
 class Ride(models.Model):
     STATUS_CHOICES = [
-        ('REQUESTED','REQUESTED'),
-        ('ACCEPTED','ACCEPTED'),
-        ('STARTED','STARTED'),
-        ('COMPLETED','COMPLETED'),
-        ('CANCELLED','CANCELLED'),
+        ('pending', 'Pending'),
+        ('ongoing', 'Ongoing'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
     ]
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='rides')
-    customer = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='rides_as_customer')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='REQUESTED')
-    fare = models.FloatField(null=True, blank=True)
-    distance_km = models.FloatField(null=True, blank=True)
-    duration_min = models.FloatField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    customer = models.ForeignKey('auth.User', on_delete=models.CASCADE, null=True, blank=True)
+    pickup_location = models.CharField(max_length=255, null=True, blank=True)
+    drop_location = models.CharField(max_length=255, null=True, blank=True)
+    driver_name = models.CharField(max_length=255, null=True, blank=True)
+    fare = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     def __str__(self):
         return f"Ride {self.id} - {self.status}"

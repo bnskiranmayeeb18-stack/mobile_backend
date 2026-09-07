@@ -1,11 +1,8 @@
 from django.urls import path
-from .views import RideHistoryView, RideActiveView, RideCompletedView, RideCancelledView
-from .views import register_customer, login_view, create_ride, ride_status_update, ride_detail
+from .views import RideStatsView, RideListInefficientView, RideListOptimizedView
 
 urlpatterns = [
-    # ... nee old urls - vatillo api/ lekunda chudu
-    path('rides/history/', RideHistoryView.as_view(), name='ride-history'),
-    path('rides/active/', RideActiveView.as_view(), name='ride-active'),
-    path('rides/completed/', RideCompletedView.as_view(), name='ride-completed'),
-    path('rides/cancelled/', RideCancelledView.as_view(), name='ride-cancelled'),
+    path('stats/', RideStatsView.as_view(), name='ride-stats'),
+    path('rides/inefficient/', RideListInefficientView.as_view(), name='rides-inefficient'),
+    path('rides/optimized/', RideListOptimizedView.as_view(), name='rides-optimized'),
 ]
