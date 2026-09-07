@@ -4,7 +4,10 @@ from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
+from rest_framework.generics import ListAPIView
+from django.db.models import Q
 from.models import Ride
+from.serializers import RideSerializer
 
 # Constants for status validation
 INVALID_TRANSITIONS = {
@@ -104,3 +107,60 @@ def ride_status_update(request, ride_id):
         "old_status": old_status,
         "new_status": ride.status
     }, status=200)
+
+
+def apply_ride_filters(queryset, request):
+    date = request.query_params.get('date')  # ?date=2025-09-07
+    status = request.query_params.get('status')  # ?status=COMPLETED
+    driver = request.query_params.get('driver')  # ?driver=1
+    fare_min = request.query_params.get('fare_min')
+    fare_max = request.query_params.get('fare_max')
+
+    if date:
+        queryset = queryset.filter(created_at__date=date)
+    if status:
+        queryset = queryset.filter(status=status)
+    if driver:
+        queryset = queryset.filter(driver_id=driver)
+    if fare_min:
+        queryset = queryset.filter(fare__gte=fare_min)
+    if fare_max:
+        queryset = queryset.filter(fare__lte=fare_max)
+
+    return queryset.select_related('customer', 'driver').order_by('-created_at')
+
+
+# 1. GET /api/rides/history/ - anni rides
+class RideHistoryView(ListAPIView):
+    serializer_class = RideSerializer
+
+    def get_queryset(self):
+        qs = Ride.objects.all()
+        return apply_ride_filters(qs, self.request)
+
+
+# 2. GET /api/rides/active/ - REQUESTED, ACCEPTED, STARTED
+class RideActiveView(ListAPIView):
+    serializer_class = RideSerializer
+
+    def get_queryset(self):
+        qs = Ride.objects.filter(status__in=['REQUESTED', 'ACCEPTED', 'STARTED'])
+        return apply_ride_filters(qs, self.request)
+
+
+# 3. GET /api/rides/completed/
+class RideCompletedView(ListAPIView):
+    serializer_class = RideSerializer
+
+    def get_queryset(self):
+        qs = Ride.objects.filter(status='COMPLETED')
+        return apply_ride_filters(qs, self.request)
+
+
+# 4. GET /api/rides/cancelled/
+class RideCancelledView(ListAPIView):
+    serializer_class = RideSerializer
+
+    def get_queryset(self):
+        qs = Ride.objects.filter(status='CANCELLED')
+        return apply_ride_filters(qs, self.request)

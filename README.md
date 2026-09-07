@@ -41,3 +41,7 @@ All APIs tested via Postman and Swagger - Working ✅
 Sprint 9 (29/6 - 12/7) - Completed ✅
 Ride Flow: REQUESTED -> ACCEPTED -> ONGOING -> COMPLETED working with PATCH /api/rides/1/status/ and fare estimate 250 for Nellore-Tirupati
 - ride_collection.json - Ride lifecycle (REQUESTED->COMPLETED)
+### Task 2 - Ride History APIs Proof
+All 4 endpoints return 401 without token (expected behaviour)
+
+![Ride Cancelled API Proof](docs/api-proof.png)
