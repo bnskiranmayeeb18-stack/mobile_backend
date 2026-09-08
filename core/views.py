@@ -1,50 +1,67 @@
-from rest_framework.decorators import api_view
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from django.db.models import Count, Avg
-from .models import Ride
-from .serializers import RideSerializer
-from .pagination import RidePagination
+from rest_framework.authtoken.models import Token
+from.models import DriverLocation
 
+# 1. REGISTER - kotha user create chestundi
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    email = request.data.get('email', '')
 
-@api_view(['GET'])
-def ride_list(request):
-    # Refactored: select_related added to avoid N+1 when serializer accesses customer
-    rides = Ride.objects.select_related('customer').all().order_by('-id')
-    paginator = RidePagination()
-    result = paginator.paginate_queryset(rides, request)
-    serializer = RideSerializer(result, many=True)
-    return paginator.get_paginated_response(serializer.data)
+    if not username or not password:
+        return Response({"error": "username and password required"}, status=400)
 
+    if User.objects.filter(username=username).exists():
+        user = User.objects.get(username=username)
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({"token": token.key, "message": "User already exists"})
 
-@api_view(['GET'])
-def optimized_rides(request):
-    # Refactored: No queries inside loops, single DB call with select_related
-    rides = Ride.objects.select_related('customer').all().order_by('-created_at')
-    paginator = RidePagination()
-    result = paginator.paginate_queryset(rides, request)
-    serializer = RideSerializer(result, many=True)
-    return paginator.get_paginated_response(serializer.data)
+    user = User.objects.create_user(username=username, password=password, email=email)
+    token, _ = Token.objects.get_or_create(user=user)
+    return Response({"token": token.key, "username": user.username})
 
+# 2. LOGIN - token istundi
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    user = authenticate(username=username, password=password)
+    if user:
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({"token": token.key})
+    return Response({"error": "Invalid credentials"}, status=400)
 
-@api_view(['GET'])
-def ride_stats(request):
-    # Refactored: Single aggregate query instead of multiple calls
-    stats = Ride.objects.aggregate(
-        total_rides=Count('id'),
-        avg_fare=Avg('fare')
+# 3. UPDATE DRIVER LOCATION - nee main task
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_driver_location(request):
+    lat = request.data.get('latitude')
+    lng = request.data.get('longitude')
+
+    if lat is None or lng is None:
+        return Response({"error": "latitude and longitude required"}, status=400)
+
+    try:
+        lat = float(lat)
+        lng = float(lng)
+    except:
+        return Response({"error": "Invalid latitude/longitude"}, status=400)
+
+    # Save or update
+    obj, created = DriverLocation.objects.update_or_create(
+        driver=request.user,
+        defaults={'latitude': lat, 'longitude': lng}
     )
-    return Response(stats)
-
-
-@api_view(['GET'])
-def ride_history(request):
-    # Refactored: Removed duplicate query logic, added select_related
-    rides = Ride.objects.select_related('customer').all().order_by('-created_at')
-    user_id = request.query_params.get('user_id')
-    if user_id:
-        rides = rides.filter(customer_id=user_id)
-
-    paginator = RidePagination()
-    result = paginator.paginate_queryset(rides, request)
-    serializer = RideSerializer(result, many=True)
-    return paginator.get_paginated_response(serializer.data)
+    return Response({
+        "message": "Location updated",
+        "driver": request.user.username,
+        "latitude": obj.latitude,
+        "longitude": obj.longitude
+    }, status=200)
