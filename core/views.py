@@ -1,101 +1,117 @@
+import json
 import math
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.models import User
 from .models import DriverLocation
 
 
-# Haversine function - Task 6
 def haversine(lat1, lon1, lat2, lon2):
-    R = 6371  # Earth radius in km
-    d_lat = math.radians(lat2 - lat1)
-    d_lon = math.radians(lon2 - lon1)
-    a = math.sin(d_lat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(
-        d_lon / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
+    R = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.asin(math.sqrt(a))
 
 
-# Task 3 - Location Update
-class DriverLocationUpdateView(APIView):
-    def post(self, request):
-        driver_id = request.data.get('driver_id')
-        lat = request.data.get('latitude')
-        lon = request.data.get('longitude')
+@csrf_exempt
+def location_update(request):
+    if request.method != 'POST':
+        return JsonResponse({"error": "POST only"}, status=405)
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-        if not driver_id or lat is None or lon is None:
-            return Response({"error": "Missing coordinates"}, status=400)
+    driver_id = data.get('driver_id')
+    lat = data.get('latitude')
+    lng = data.get('longitude')
 
-        try:
-            lat = float(lat)
-            lon = float(lon)
-            # Task 7 validation
-            if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
-                return Response({"error": "Invalid latitude or longitude"}, status=400)
-        except:
-            return Response({"error": "Invalid latitude"}, status=400)
+    # Task 7 Validation
+    if driver_id is None or lat is None or lng is None:
+        return JsonResponse({"error": "Missing coordinates or driver_id"}, status=400)
+    try:
+        lat = float(lat)
+        lng = float(lng)
+        driver_id = int(driver_id)
+    except:
+        return JsonResponse({"error": "Invalid latitude or longitude"}, status=400)
 
-        obj, _ = DriverLocation.objects.update_or_create(
-            driver_id=driver_id,
-            defaults={'latitude': lat, 'longitude': lon}
-        )
-        return Response({"message": "Location updated"}, status=200)
+    if not (-90 <= lat <= 90):
+        return JsonResponse({"error": "Invalid latitude - must be between -90 and 90"}, status=400)
+    if not (-180 <= lng <= 180):
+        return JsonResponse({"error": "Invalid longitude - must be between -180 and 180"}, status=400)
 
-
-# Task 4 - Availability Toggle
-class DriverAvailabilityView(APIView):
-    def post(self, request):
-        driver_id = request.data.get('driver_id')
-        is_available = request.data.get('is_available')
-
-        if driver_id is None or is_available is None:
-            return Response({"error": "Missing fields"}, status=400)
-
-        try:
-            driver = DriverLocation.objects.get(driver_id=driver_id)
-            # Task 7 - reject offline/busy check
-            if driver.is_available == False and is_available == True:
-                pass  # allow coming online
-            driver.is_available = bool(is_available)
-            driver.save()
-            return Response({"driver_id": str(driver_id), "is_available": driver.is_available}, status=200)
-        except DriverLocation.DoesNotExist:
-            return Response({"error": "Offline drivers"}, status=404)
+    try:
+        user = User.objects.get(id=driver_id)
+        # get_or_create - first time location update ki
+        loc, created = DriverLocation.objects.get_or_create(driver=user)
+        loc.latitude = lat
+        loc.longitude = lng
+        loc.save()
+        return JsonResponse({"message": "Location updated", "driver_id": driver_id}, status=200)
+    except User.DoesNotExist:
+        return JsonResponse({"error": "Driver not found"}, status=404)
 
 
-# Task 5 & 6 - Nearby Driver with Distance Calculation + Sort
-class NearbyDriverView(APIView):
-    def get(self, request):
-        try:
-            user_lat = float(request.query_params.get('latitude'))
-            user_lon = float(request.query_params.get('longitude'))
-            radius = float(request.query_params.get('radius', 10))
-        except:
-            return Response({"error": "Missing coordinates or Invalid radius"}, status=400)
+@csrf_exempt
+def availability(request):
+    if request.method != 'POST':
+        return JsonResponse({"error": "POST only"}, status=405)
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-        # Task 7 validation
-        if not (-90 <= user_lat <= 90) or not (-180 <= user_lon <= 180):
-            return Response({"error": "Invalid latitude or longitude"}, status=400)
-        if radius <= 0 or radius > 100:
-            return Response({"error": "Invalid radius"}, status=400)
+    driver_id = data.get('driver_id')
+    is_available = data.get('is_available')
 
-        available_drivers = DriverLocation.objects.filter(is_available=True)
-        result = []
+    if driver_id is None or is_available is None:
+        return JsonResponse({"error": "Missing driver_id or is_available"}, status=400)
 
-        for driver in available_drivers:
-            # Skip drivers with no location
-            if driver.latitude is None or driver.longitude is None:
-                continue
+    try:
+        user = User.objects.get(id=int(driver_id))
+        loc, created = DriverLocation.objects.get_or_create(driver=user)
+        loc.is_available = bool(is_available)
+        loc.save()
+        return JsonResponse({"driver_id": str(user.id), "is_available": loc.is_available}, status=200)
+    except User.DoesNotExist:
+        return JsonResponse({"error": "Driver not found"}, status=404)
 
-            dist = haversine(user_lat, user_lon, driver.latitude, driver.longitude)
 
-            if dist <= radius:
-                result.append({
-                    "driver_id": str(driver.driver_id),
-                    "distance_km": round(dist, 1)  # Task 6 format 1.7
-                })
+def nearby(request):
+    lat = request.GET.get('latitude')
+    lng = request.GET.get('longitude')
+    radius = request.GET.get('radius')
 
-        # Task 6 - Sort drivers by nearest distance
-        result_sorted = sorted(result, key=lambda x: x['distance_km'])
+    if not lat or not lng:
+        return JsonResponse({"error": "Missing coordinates"}, status=400)
+    if not radius:
+        return JsonResponse({"error": "Missing radius"}, status=400)
 
-        return Response(result_sorted, status=200)
+    try:
+        lat = float(lat)
+        lng = float(lng)
+        radius = float(radius)
+    except:
+        return JsonResponse({"error": "Invalid latitude, longitude or radius"}, status=400)
+
+    if not (-90 <= lat <= 90):
+        return JsonResponse({"error": "Invalid latitude"}, status=400)
+    if not (-180 <= lng <= 180):
+        return JsonResponse({"error": "Invalid longitude"}, status=400)
+    if radius <= 0 or radius > 100:
+        return JsonResponse({"error": "Invalid radius - must be >0 and <=100 km"}, status=400)
+
+    # Task 7: Reject Offline drivers -> is_available=True only
+    # Note: is_busy field nee model lo ledu, so only is_available filter
+    drivers = DriverLocation.objects.filter(is_available=True)
+
+    result = []
+    for d in drivers:
+        dist = haversine(lat, lng, d.latitude, d.longitude)
+        if dist <= radius:
+            result.append({"driver_id": str(d.driver.id), "distance_km": round(dist, 2)})
+
+    result.sort(key=lambda x: x['distance_km'])
+    return JsonResponse(result, safe=False, status=200)
