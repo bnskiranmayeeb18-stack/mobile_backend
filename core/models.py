@@ -9,4 +9,4 @@ class DriverLocation(models.Model):
     is_available = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.driver.username} - {self.latitude}, {self.longitude} - Available: {self.is_available}"
+        return f"{self.driver.username} - {self.latitude},{self.longitude} - Avl:{self.is_available}"

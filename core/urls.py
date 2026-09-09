@@ -1,8 +1,10 @@
 from django.urls import path
-from . import views
+from core import views
 
 urlpatterns = [
-    path('api/drivers/location/', views.update_location, name='update-location'),
-    path('api/drivers/availability/', views.update_availability, name='update-availability'),
-    path('api/admin/driver-locations/', views.admin_driver_locations, name='admin-driver-locations'),
+    path('api/drivers/availability/', views.DriverAvailabilityView.as_view(), name='driver-availability'),
+    path('api/drivers/nearby/', views.NearbyDriverView.as_view(), name='nearby-drivers'),
+    path('location/update/', views.DriverLocationUpdateView.as_view()),
+    path('availability/', views.DriverAvailabilityView.as_view()),
+    path('nearby/', views.NearbyDriverView.as_view()),
 ]
