@@ -1,0 +1,21 @@
+Task 1 — Understand REST vs WebSocket - COMPLETED
+
+*REST API:*
+Mobile -> Request -> Backend
+Mobile <- Response <- Backend
+REST is a request-response model. Connection is closed after each response. It is stateless. Mobile client must make a new request every time to get updated data. It is suitable for actions like Login, Get User Profile, Get Product List.
+
+*WebSocket:*
+Mobile <-----> Backend (Real Time)
+WebSocket is a persistent, bi-directional connection. Once connected, both mobile and backend can push data instantly without a new request. It is low-latency and real-time. For this we need Django Channels (ASGI) + Redis Channel Layer.
+
+*Features that require WebSockets in our Mobile App:*
+1.  Real-time Chat System
+2.  Live Order Status Tracking
+3.  Live Location Tracking for Delivery
+4.  Instant Push Notifications
+5.  Online/Offline & Typing Indicators
+6.  Real-time Admin Dashboard Updates
+
+*Conclusion:* We will use REST for standard CRUD operations and WebSocket via Django Channels for all real-time features.
+
