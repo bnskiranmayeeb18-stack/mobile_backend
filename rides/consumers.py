@@ -1,60 +1,33 @@
 import json
+import jwt
+from django.conf import settings
+from urllib.parse import parse_qs
 from channels.generic.websocket import AsyncWebsocketConsumer
-
 
 class RideConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.ride_id = self.scope['url_route']['kwargs']['ride_id']
-        self.room_group_name = f'ride_{self.ride_id}'
+        query = self.scope.get('query_string', b'').decode()
+        token = parse_qs(query).get('token', [None])[0]
 
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
+        if not token:
+            await self.close(code=4401)
+            return
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            await self.close(code=4408)
+            return
+        except:
+            await self.close(code=4401)
+            return
+
+        self.ride_id = self.scope['url_route']['kwargs']['ride_id']
         await self.accept()
-        print(f"Connected to ride {self.ride_id}")
+        await self.send(text_data=json.dumps({"status": "connected", "ride_id": self.ride_id, "user_id": payload.get('user_id')}))
+        print(f"CONNECTED: {self.ride_id}")
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        print(f"DISCONNECTED: {close_code}")
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
-
-        # Driver nundi location vasthe
-        if data.get('type') == 'location_update':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'driver_location',
-                    'lat': data.get('lat'),
-                    'lng': data.get('lng'),
-                    'heading': data.get('heading')
-                }
-            )
-        # Status update vasthe (Task 4 kosam)
-        elif data.get('type') == 'status_update':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'ride_status',
-                    'status': data.get('status')
-                }
-            )
-
-    # Passenger ki location pampadam
-    async def driver_location(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'location',
-            'lat': event['lat'],
-            'lng': event['lng'],
-            'heading': event.get('heading'),
-        }))
-
-    # Passenger ki status pampadam
-    async def ride_status(self, event):
-        await self.send(text_data=json.dumps({
-            'status': event['status']
-        }))
+        await self.send(text_data=text_data)
