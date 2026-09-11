@@ -2,19 +2,13 @@ import os
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
+import rides.routing
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mobile_backend.settings')
 
-django_asgi_app = get_asgi_application()
-
-# rides app routing import
-from rides.routing import websocket_urlpatterns
-
 application = ProtocolTypeRouter({
-    "http": django_asgi_app,
+    "http": get_asgi_application(),
     "websocket": AuthMiddlewareStack(
-        URLRouter(
-            websocket_urlpatterns
-        )
+        URLRouter(rides.routing.websocket_urlpatterns)
     ),
 })

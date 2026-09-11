@@ -7,51 +7,54 @@ class RideConsumer(AsyncWebsocketConsumer):
         self.ride_id = self.scope['url_route']['kwargs']['ride_id']
         self.room_group_name = f'ride_{self.ride_id}'
 
-        # Group lo join avvadam
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
-
         await self.accept()
-        print(f"WebSocket Connected: {self.ride_id}")
-
-        # Connect ayyaka welcome message
-        await self.send(text_data=json.dumps({
-            "type": "connection_established",
-            "message": f"Connected to ride {self.ride_id}",
-            "ride_id": self.ride_id
-        }))
+        print(f"Connected to ride {self.ride_id}")
 
     async def disconnect(self, close_code):
-        # Group nundi leave avvadam
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
         )
-        print(f"WebSocket Disconnected: {self.ride_id}")
 
     async def receive(self, text_data):
-        # Mobile nundi message vaste
-        try:
-            text_data_json = json.loads(text_data)
-            message = text_data_json.get('message', '')
+        data = json.loads(text_data)
 
-            # Andariki broadcast cheyadam
+        # Driver nundi location vasthe
+        if data.get('type') == 'location_update':
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
-                    'type': 'ride_update',
-                    'message': message,
-                    'ride_id': self.ride_id
+                    'type': 'driver_location',
+                    'lat': data.get('lat'),
+                    'lng': data.get('lng'),
+                    'heading': data.get('heading')
                 }
             )
-        except Exception as e:
-            await self.send(text_data=json.dumps({"error": str(e)}))
+        # Status update vasthe (Task 4 kosam)
+        elif data.get('type') == 'status_update':
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'ride_status',
+                    'status': data.get('status')
+                }
+            )
 
-    async def ride_update(self, event):
-        # Group nundi vachina message ni mobile ki pampadam
+    # Passenger ki location pampadam
+    async def driver_location(self, event):
         await self.send(text_data=json.dumps({
-            "message": event['message'],
-            "ride_id": event['ride_id']
+            'type': 'location',
+            'lat': event['lat'],
+            'lng': event['lng'],
+            'heading': event.get('heading'),
+        }))
+
+    # Passenger ki status pampadam
+    async def ride_status(self, event):
+        await self.send(text_data=json.dumps({
+            'status': event['status']
         }))

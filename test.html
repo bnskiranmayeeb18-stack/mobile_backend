@@ -1,0 +1,18 @@
+<!DOCTYPE html><html><body>
+<h2>EPIC 03 Task 4 - Ride Status Live</h2>
+<input id="rideId" placeholder="Ride ID" style="width:350px">
+<button onclick="connectWS()">Connect</button>
+<div id="log" style="background:#000;color:#0f0;padding:10px;margin-top:10px;height:300px"></div>
+<script>
+let ws;
+function connectWS(){
+  let id=document.getElementById('rideId').value;
+  ws=new WebSocket(`ws://127.0.0.1:8000/ws/rides/${id}/`);
+  ws.onopen=()=>{log(`<h3 style='color:green'>CONNECTED to ride_${id}</h3>`)};
+  ws.onmessage=(e)=>{log(`<p>Message: ${e.data}</p>`)};
+  ws.onerror=()=>{log(`<h3 style='color:red'>ERROR</h3>`)};
+  ws.onclose=()=>{log(`<p>DISCONNECTED - Code 1000</p>`)};
+}
+function log(m){document.getElementById('log').innerHTML+=m}
+</script>
+</body></html>
