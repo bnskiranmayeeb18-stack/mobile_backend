@@ -6,6 +6,12 @@ whitenoise
 python-decouple
 django-filter
 djangorestframework-simplejwt
+celery==5.3.6
+redis==4.6.0
+django-redis
+django-cors-headers
+channels
+channels-redis
 
 
 channels==4.1.0
