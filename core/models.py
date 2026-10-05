@@ -1,5 +1,6 @@
-from django.db import models
 import uuid
+from django.db import models
+
 
 class Ride(models.Model):
     STATUS_CHOICES = [
@@ -18,18 +19,6 @@ class Ride(models.Model):
     driver_id = models.CharField(max_length=100, null=True, blank=True)
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='REQUESTED')
-
-    # Pickup and Drop
-    pickup_lat = models.FloatField(default=17.7231)
-    pickup_lng = models.FloatField(default=83.3012)
-    drop_lat = models.FloatField(default=17.7300)
-    drop_lng = models.FloatField(default=83.3200)
-
-    # Driver Live Location - Task 5 kosam
-    driver_lat = models.FloatField(null=True, blank=True)
-    driver_lng = models.FloatField(null=True, blank=True)
-    driver_heading = models.FloatField(null=True, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
