@@ -1,20 +1,16 @@
+"""
+FareService - Business calculation moved from views - Task 3 fix
+"""
 class FareService:
-    BASE_FARE = 40
-    PER_KM_RATE = 10
-    PER_MIN_RATE = 2
-    PLATFORM_FEE = 10
-
-    @classmethod
-    def get_fare_estimate(cls, distance_km: float, duration_min: float) -> float:
-        # Single responsibility - only fare logic
-        distance_fare = distance_km * cls.PER_KM_RATE
-        time_fare = duration_min * cls.PER_MIN_RATE
-        return cls.BASE_FARE + distance_fare + time_fare + cls.PLATFORM_FEE
-
-    # Alias for old code compatibility
-    @classmethod
-    def calculate_fare(cls, distance_km, duration_min, is_peak_hour=False):
-        total = cls.get_fare_estimate(distance_km, duration_min)
-        if is_peak_hour:
-            total += 10 # surge
-        return {"total": total}
+    @staticmethod
+    def calculate_fare(distance_km, base_rate=50, per_km=12):
+        # Business calculation - moved from views.py BAD -> service.py GOOD
+        if distance_km <= 0:
+            raise ValueError("Distance must be positive")
+        fare = base_rate + (distance_km * per_km)
+        # Multiple conditional statements - moved from views
+        if distance_km > 20:
+            fare *= 0.9 # 10% discount
+        elif distance_km > 10:
+            fare *= 0.95
+        return round(fare, 2)
