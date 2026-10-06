@@ -1,4 +1,4 @@
-from celery import shared_task
+from celery_app import shared_task
 import time
 
 @shared_task

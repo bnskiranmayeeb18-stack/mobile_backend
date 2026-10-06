@@ -1,13 +1,20 @@
 from rest_framework import serializers
-from .models import Ride, DriverLocation
 
-class RideSerializer(serializers.ModelSerializer):
-    customer_username = serializers.CharField(source='customer.username', read_only=True)
-    class Meta:
-        model = Ride
-        fields = ['id', 'customer', 'customer_username', 'pickup_location', 'drop_location', 'fare', 'created_at']
+from .models import Notification
 
-class DriverLocationSerializer(serializers.ModelSerializer):
+
+class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
-        model = DriverLocation
-        fields = ['id', 'driver', 'latitude', 'longitude', 'accuracy', 'updated_at']
+        model = Notification
+        fields = [
+            'id',
+            'title',
+            'message',
+            'type',
+            'is_read',
+            'created_at',
+        ]
+        read_only_fields = [
+            'id',
+            'created_at',
+        ]

@@ -1,9 +1,8 @@
 from django.urls import path
-from. import views
+from .views import get_ride, get_notifications
 
 urlpatterns = [
-    path('token/', views.get_token),
-    path('<str:ride_id>/status/', views.update_ride_status),
-    path('<str:ride_id>/location/', views.update_driver_location),
-    path('<str:ride_id>/', views.get_ride),
+    # IMPORTANT: notifications mundhu undali
+    path('notifications/', get_notifications, name='get_notifications'),
+    path('<str:ride_id>/', get_ride, name='get_ride'),
 ]
