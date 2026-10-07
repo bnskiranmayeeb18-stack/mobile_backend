@@ -100,3 +100,13 @@ CACHES = {
         }
     }
 }
+# settings.py - Add this
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': (
+        'core.utils.renderers.StandardJSONRenderer', # Task 6 - All APIs will return {success, message, data}
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ),
+    'EXCEPTION_HANDLER': 'core.utils.exception_handler.custom_exception_handler', # Task 6 - Consistent error
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
+}
