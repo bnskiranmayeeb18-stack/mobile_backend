@@ -1,7 +1,9 @@
 """
 UserService - User business logic
 """
+
 from django.core.cache import cache
+
 
 class UserService:
     @staticmethod
@@ -11,8 +13,8 @@ class UserService:
         if user:
             return user
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
         user = User.objects.get(id=user_id)
         cache.set(cache_key, user, timeout=3600)
         return user
-    

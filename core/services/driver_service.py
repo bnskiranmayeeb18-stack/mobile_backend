@@ -1,7 +1,9 @@
 """
 DriverService - Database operations moved from views - Task 3 fix
 """
+
 from django.core.cache import cache
+
 
 class DriverService:
     @staticmethod
@@ -10,11 +12,12 @@ class DriverService:
         cache_key = f"available_drivers_{lat}_{lng}"
         drivers = cache.get(cache_key)
         if drivers:
-            return drivers # HIT
+            return drivers  # HIT
 
         from drivers.models import Driver
+
         # Optimized ORM - select_related
-        drivers = Driver.objects.select_related('user').filter(
+        drivers = Driver.objects.select_related("user").filter(
             is_available=True
         )[:10]
         # Cache 60s TTL - business logic
@@ -29,7 +32,8 @@ class DriverService:
         if driver:
             return driver
         from drivers.models import Driver
-        driver = Driver.objects.select_related('user').get(id=driver_id)
+
+        driver = Driver.objects.select_related("user").get(id=driver_id)
         cache.set(cache_key, driver, timeout=3600)
         return driver
 

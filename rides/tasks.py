@@ -1,7 +1,9 @@
+import logging
+
 from celery import shared_task
 from django.core.cache import cache
+
 from notifications.models import Notification
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +23,7 @@ def send_ride_notification(self, ride_id, event_type, message):
             return "Duplicate prevented - exists in DB"
 
         Notification.objects.create(
-            ride_id=ride_id,
-            event_type=event_type,
-            message=message
+            ride_id=ride_id, event_type=event_type, message=message
         )
         cache.set(lock_key, True, timeout=60)
 

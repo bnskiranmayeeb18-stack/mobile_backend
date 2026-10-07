@@ -1,10 +1,13 @@
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import (api_view, authentication_classes,
+                                       permission_classes)
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from.models import Ride
 
-@api_view(['GET'])
+from .models import Ride
+
+
+@api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def get_ride(request, ride_id):
@@ -15,7 +18,11 @@ def get_ride(request, ride_id):
             "passenger_id": str(ride.passenger_id),
             "driver_id": str(ride.driver_id) if ride.driver_id else None,
             "status": ride.status,
-            "created_at": ride.created_at.isoformat() if hasattr(ride, 'created_at') else None,
+            "created_at": (
+                ride.created_at.isoformat()
+                if hasattr(ride, "created_at")
+                else None
+            ),
         }
         return Response(data, status=200)
     except Ride.DoesNotExist:
@@ -23,7 +30,8 @@ def get_ride(request, ride_id):
     except Exception as e:
         return Response({"error": str(e)}, status=400)
 
-@api_view(['GET'])
+
+@api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def get_notifications(request):

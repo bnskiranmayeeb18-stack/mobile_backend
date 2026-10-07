@@ -1,11 +1,21 @@
 from rest_framework import serializers
+
 from core.models import Ride
+
 
 class RideSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ride
-        fields = ['id','pickup_location','drop_location','distance','fare','status','created_at']
-        read_only_fields = ['fare','status']
+        fields = [
+            "id",
+            "pickup_location",
+            "drop_location",
+            "distance",
+            "fare",
+            "status",
+            "created_at",
+        ]
+        read_only_fields = ["fare", "status"]
 
     def validate_distance(self, value):
         # Validation ONLY in serializer - moved from views
@@ -20,5 +30,8 @@ class RideSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Pickup required")
         return value
 
+
 class RideStatusUpdateSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=['accepted','in_progress','completed','cancelled'])
+    status = serializers.ChoiceField(
+        choices=["accepted", "in_progress", "completed", "cancelled"]
+    )

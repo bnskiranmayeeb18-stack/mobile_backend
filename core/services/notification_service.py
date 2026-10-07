@@ -1,32 +1,37 @@
-"""
-NotificationService - Notification logic moved from views - Task 3 fix
-"""
-from django.core.cache import cache
-import uuid
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class NotificationService:
     @staticmethod
-    def send_notification(user, ride, message):
-        from notifications.models import Notification
-        # Idempotency - duplicate prevention
-        idempotency_key = f"{user.id}_{ride.id}_{message}"
-        if Notification.objects.filter(idempotency_key=idempotency_key).exists():
-            return None # Already sent - no duplicate
+    def send_notification(user, message, ride=None):
+        logger.info(f"Notification to {user.id}: {message}")
+        from core.models import Notification
 
         notification = Notification.objects.create(
             user=user,
-            ride=ride,
             message=message,
-            idempotency_key=idempotency_key
+            ride=ride,
         )
-        # Invalidate cache
-        cache.delete(f"notifications_{user.id}")
         return notification
 
     @staticmethod
-    def send_ride_created(user, ride):
-        return NotificationService.send_notification(user, ride, f"Ride {ride.id} created")
+    def get_user_notifications(user):
+        from core.models import Notification
+
+        return Notification.objects.filter(user=user).order_by("-created_at")
 
     @staticmethod
-    def send_status_update(user, ride, status):
-        return NotificationService.send_notification(user, ride, f"Ride {ride.id} status: {status}")
+    def mark_as_read(notification_id, user):
+        from core.models import Notification
+
+        try:
+            notification = Notification.objects.get(
+                id=notification_id, user=user
+            )
+            notification.is_read = True
+            notification.save()
+            return notification
+        except Notification.DoesNotExist:
+            return None

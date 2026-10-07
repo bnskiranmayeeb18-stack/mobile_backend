@@ -8,28 +8,32 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0001_initial'),
+        ("core", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='driverlocation',
-            name='updated_at',
+            model_name="driverlocation",
+            name="updated_at",
         ),
         migrations.AddField(
-            model_name='driverlocation',
-            name='is_available',
+            model_name="driverlocation",
+            name="is_available",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='driverlocation',
-            name='last_updated',
+            model_name="driverlocation",
+            name="last_updated",
             field=models.DateTimeField(auto_now=True),
         ),
         migrations.AlterField(
-            model_name='driverlocation',
-            name='driver',
-            field=models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='location', to=settings.AUTH_USER_MODEL),
+            model_name="driverlocation",
+            name="driver",
+            field=models.OneToOneField(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="location",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

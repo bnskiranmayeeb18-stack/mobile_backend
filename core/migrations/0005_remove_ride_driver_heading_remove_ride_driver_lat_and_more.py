@@ -6,36 +6,36 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0004_remove_ride_drop_location_and_more'),
+        ("core", "0004_remove_ride_drop_location_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='ride',
-            name='driver_heading',
+            model_name="ride",
+            name="driver_heading",
         ),
         migrations.RemoveField(
-            model_name='ride',
-            name='driver_lat',
+            model_name="ride",
+            name="driver_lat",
         ),
         migrations.RemoveField(
-            model_name='ride',
-            name='driver_lng',
+            model_name="ride",
+            name="driver_lng",
         ),
         migrations.RemoveField(
-            model_name='ride',
-            name='drop_lat',
+            model_name="ride",
+            name="drop_lat",
         ),
         migrations.RemoveField(
-            model_name='ride',
-            name='drop_lng',
+            model_name="ride",
+            name="drop_lng",
         ),
         migrations.RemoveField(
-            model_name='ride',
-            name='pickup_lat',
+            model_name="ride",
+            name="pickup_lat",
         ),
         migrations.RemoveField(
-            model_name='ride',
-            name='pickup_lng',
+            model_name="ride",
+            name="pickup_lng",
         ),
     ]

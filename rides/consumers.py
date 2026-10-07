@@ -1,19 +1,22 @@
 import json
-from channels.generic.websocket import AsyncWebsocketConsumer
-from channels.db import database_sync_to_async
-from rest_framework.authtoken.models import Token
 from urllib.parse import parse_qs
+
+from channels.db import database_sync_to_async
+from channels.generic.websocket import AsyncWebsocketConsumer
+from rest_framework.authtoken.models import Token
+
 from core.models import Ride
+
 
 class RideConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.ride_id = self.scope['url_route']['kwargs']['ride_id']
+        self.ride_id = self.scope["url_route"]["kwargs"]["ride_id"]
         self.room_group_name = f"ride_{self.ride_id}"
 
         # Token auth from?token=xxx
-        query_string = self.scope.get('query_string', b'').decode()
+        query_string = self.scope.get("query_string", b"").decode()
         query_params = parse_qs(query_string)
-        token_key = query_params.get('token', [None])[0]
+        token_key = query_params.get("token", [None])[0]
 
         if not token_key:
             await self.close(code=4001)
@@ -24,7 +27,7 @@ class RideConsumer(AsyncWebsocketConsumer):
             await self.close(code=4001)
             return
 
-        self.scope['user'] = user
+        self.scope["user"] = user
 
         # Ownership check - Task 7
         has_access = await self.check_ride_access(self.ride_id, user)
@@ -32,50 +35,52 @@ class RideConsumer(AsyncWebsocketConsumer):
             await self.close(code=4003)
             return
 
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-        await self.send(text_data=json.dumps({
-            'type': 'connection_established',
-            'ride_id': self.ride_id,
-            'user': user.username
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "connection_established",
+                    "ride_id": self.ride_id,
+                    "user": user.username,
+                }
+            )
+        )
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
     async def receive(self, text_data):
         data = json.loads(text_data)
         await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'ride_message',
-                'message': data
-            }
+            self.room_group_name, {"type": "ride_message", "message": data}
         )
 
     async def ride_status_update(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'status_update',
-            'status': event['status'],
-            'ride_id': event['ride_id']
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "status_update",
+                    "status": event["status"],
+                    "ride_id": event["ride_id"],
+                }
+            )
+        )
 
     async def driver_location_update(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'location_update',
-            'lat': event['lat'],
-            'lng': event['lng'],
-            'ride_id': event['ride_id']
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "location_update",
+                    "lat": event["lat"],
+                    "lng": event["lng"],
+                    "ride_id": event["ride_id"],
+                }
+            )
+        )
 
     async def ride_message(self, event):
-        await self.send(text_data=json.dumps(event['message']))
+        await self.send(text_data=json.dumps(event["message"]))
 
     @database_sync_to_async
     def get_user_from_token(self, token_key):
@@ -90,11 +95,11 @@ class RideConsumer(AsyncWebsocketConsumer):
         try:
             ride = Ride.objects.get(id=ride_id)
             # Fixed: model has driver_id not driver object
-            if hasattr(ride, 'driver_id') and ride.driver_id:
-                if ride.driver_id!= user.id:
+            if hasattr(ride, "driver_id") and ride.driver_id:
+                if ride.driver_id != user.id:
                     return False
-            elif hasattr(ride, 'driver') and getattr(ride, 'driver', None):
-                if ride.driver!= user:
+            elif hasattr(ride, "driver") and getattr(ride, "driver", None):
+                if ride.driver != user:
                     return False
             return True
         except Ride.DoesNotExist:

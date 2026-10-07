@@ -1,44 +1,27 @@
-from django.db.models import Q, F, Count, Avg
+from django.db.models import Count
+
 from core.models import Ride
 
-# EPIC 03 - Task 1: Advanced QuerySets
 
-def advanced_queryset_examples():
-    # 1. filter() - REQUESTED rides
-    requested_rides = Ride.objects.filter(status='REQUESTED')
+def get_optimized_rides():
+    return Ride.objects.select_related("user", "driver", "vehicle").all()
 
-    # 2. exclude() - CANCELLED kakunda
-    active_rides = Ride.objects.exclude(status='CANCELLED')
 
-    # 3. Q() - REQUESTED OR ACCEPTED (OR condition)
-    q_rides = Ride.objects.filter(Q(status='REQUESTED') | Q(status='ACCEPTED'))
+def get_user_ride_stats(user):
+    return (
+        Ride.objects.filter(user=user)
+        .values("status")
+        .annotate(count=Count("id"))
+    )
 
-    # 4. F() - field to field comparison
-    # Example: distance > 5km rides
-    long_rides = Ride.objects.filter(distance__gt=F('id'))  # sample F usage
 
-    # 5. annotate() - prati customer ki count
-    from django.contrib.auth.models import User
-    users_with_count = User.objects.annotate(total_rides=Count('ride'))
+def get_driver_performance():
+    return (
+        Ride.objects.values("driver")
+        .annotate(total_rides=Count("id"))
+        .order_by("-total_rides")
+    )
 
-    # 6. aggregate() - motham rides count / avg
-    stats = Ride.objects.aggregate(total_rides=Count('id'), avg_fare=Avg('fare'))
 
-    # 7. values() - dict list ga - only id, status
-    rides_dict = Ride.objects.values('id', 'status')
-
-    # 8. values_list() - flat list of ids
-    ride_ids = Ride.objects.values_list('id', flat=True)
-
-    # 9. exists() - ride unda leda? Fast query
-    has_requested = Ride.objects.filter(status='REQUESTED').exists()
-
-    # 10. distinct() - unique customers
-    unique_customers = Ride.objects.values('customer').distinct()
-
-    return {
-        "filter": requested_rides,
-        "exclude": active_rides,
-        "q_objects": q_rides,
-        "exists": has_requested
-    }
+def get_rides_with_prefetch():
+    return Ride.objects.prefetch_related("user", "driver").all()

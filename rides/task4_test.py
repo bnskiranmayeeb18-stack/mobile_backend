@@ -1,9 +1,13 @@
 from django.conf import settings
-if not settings.configured:
-    settings.configure(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
 
-from rides.cache_service import invalidate_driver_cache, get_driver_status
+if not settings.configured:
+    settings.configure(
+        CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    )
+
 from django.core.cache import cache
+
+from rides.cache_service import get_driver_status, invalidate_driver_cache
 
 print("=== TASK 4 - CACHE INVALIDATION TEST ===")
 # Initial cache

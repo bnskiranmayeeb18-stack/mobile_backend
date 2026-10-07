@@ -1,12 +1,19 @@
 from django.conf import settings
+
 if not settings.configured:
-    settings.configure(SECRET_KEY="test-28aug", CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
+    settings.configure(
+        SECRET_KEY="test-28aug",
+        CACHES={
+            "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+        },
+    )
 
 print("=== TASK 7 - Automated Testing - 10 Modules ===")
 
 # Simulate test framework
 tests_passed = 0
 tests_total = 0
+
 
 def test(name, condition, positive=True):
     global tests_passed, tests_total
@@ -17,6 +24,7 @@ def test(name, condition, positive=True):
         tests_passed += 1
     else:
         print(f" ❌ FAIL [{scenario}] {name}")
+
 
 # 1. Authentication Tests
 print("\n1. Authentication (2 tests):")
@@ -70,6 +78,8 @@ test("WS connect invalid JWT -> 4401 Close", True, positive=False)
 
 print(f"\n--- RESULTS ---")
 print(f"Total: {tests_total} tests, Passed: {tests_passed}")
-print(f"Coverage: Authentication, User, Driver, Vehicle, Ride, Fare, Location, Notifications, Permissions, WebSockets")
+print(
+    f"Coverage: Authentication, User, Driver, Vehicle, Ride, Fare, Location, Notifications, Permissions, WebSockets"
+)
 print(f"Scenarios: Positive + Negative both covered ✅")
 print("\n✅ TASK 7 FULL DONE!")

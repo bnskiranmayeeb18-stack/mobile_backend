@@ -1,9 +1,13 @@
 from django.conf import settings
+
 if not settings.configured:
-    settings.configure(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
+    settings.configure(
+        CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    )
+
+import time
 
 from django.core.cache import cache
-import time
 
 print("=== TASK 5 - Performance Benchmark - FULL (4 Metrics) ===")
 

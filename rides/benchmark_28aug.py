@@ -1,9 +1,13 @@
 from django.conf import settings
+
 if not settings.configured:
-    settings.configure(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
+    settings.configure(
+        CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    )
+
+import time
 
 from django.core.cache import cache
-import time
 
 print("=== TASK 5 - PERFORMANCE BENCHMARK ===")
 print("Measure: Before Cache VS After Cache")
@@ -15,7 +19,7 @@ cache.set("vehicle_types", test_data, 3600)
 # Test 1: BEFORE CACHE (Simulate DB - 100ms delay)
 print("\n1. BEFORE CACHE (DB Query):")
 start = time.time()
-time.sleep(0.1) # DB query simulation
+time.sleep(0.1)  # DB query simulation
 db_data = test_data
 db_time = (time.time() - start) * 1000
 print(f"   Response time: {db_time:.2f} ms")

@@ -7,22 +7,32 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Notification',
+            name="Notification",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ride_id', models.IntegerField()),
-                ('event_type', models.CharField(default='ride_completed', max_length=50)),
-                ('message', models.TextField(default='test message')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("ride_id", models.IntegerField()),
+                (
+                    "event_type",
+                    models.CharField(default="ride_completed", max_length=50),
+                ),
+                ("message", models.TextField(default="test message")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'ordering': ['-created_at'],
-                'unique_together': {('ride_id', 'event_type')},
+                "ordering": ["-created_at"],
+                "unique_together": {("ride_id", "event_type")},
             },
         ),
     ]

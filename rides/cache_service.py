@@ -1,17 +1,19 @@
 # rides/cache_service.py - 28 Aug FIXED
 import os
-import django
 import sys
+
+import django
 
 # Django setup - FIRST LINE lo undali
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mobile_backend.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mobile_backend.settings")
 django.setup()
 
 # Tarvata imports
 from django.core.cache import cache
-from rides.models import Ride
 from django.db.models import Count
+
+from rides.models import Ride
 
 CACHE_CONFIG = {
     "vehicle_types": {"key": "vehicle_types_list", "ttl": 3600},
@@ -34,14 +36,22 @@ def get_vehicle_types():
     def fetch():
         return ["Sedan", "SUV", "Bike", "Auto", "Mini"]
 
-    return get_cached_or_fetch(CACHE_CONFIG["vehicle_types"]["key"], fetch, CACHE_CONFIG["vehicle_types"]["ttl"])
+    return get_cached_or_fetch(
+        CACHE_CONFIG["vehicle_types"]["key"],
+        fetch,
+        CACHE_CONFIG["vehicle_types"]["ttl"],
+    )
 
 
 def get_distinct_pickups():
     def fetch():
-        return list(Ride.objects.values_list('pickup_location', flat=True).distinct())
+        return list(Ride.objects.values_list("pickup_location", flat=True).distinct())
 
-    return get_cached_or_fetch(CACHE_CONFIG["pickup_locations"]["key"], fetch, CACHE_CONFIG["pickup_locations"]["ttl"])
+    return get_cached_or_fetch(
+        CACHE_CONFIG["pickup_locations"]["key"],
+        fetch,
+        CACHE_CONFIG["pickup_locations"]["ttl"],
+    )
 
 
 # Test
@@ -58,7 +68,6 @@ if __name__ == "__main__":
     print("\n✅ PASS if 1st=db, 2nd=cache")
     from django.core.cache import cache
 
-
     # Task 4 - Cache Invalidation - Stale data rakunda
     def invalidate_driver_cache(driver_id):
         """Driver status update ayyaka cache delete chesi kotha data store cheyyadam"""
@@ -74,13 +83,12 @@ if __name__ == "__main__":
             "driver_id": driver_id,
             "status": "AVAILABLE",
             "location": "Vizag MVP",
-            "updated_at": "28-Aug-2026 2:45 PM"
+            "updated_at": "28-Aug-2026 2:45 PM",
         }
         cache.set(f"driver_{driver_id}_status", updated_data, timeout=60)
         print(f"  -> Step 2: Store Updated Data DONE: {updated_data}")
         print("  ✅ Stale data radu - Fresh data only!")
         return updated_data
-
 
     def get_driver_status(driver_id):
         key = f"driver_{driver_id}_status"

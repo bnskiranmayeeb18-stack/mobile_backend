@@ -8,15 +8,18 @@ parent_dir = current_dir.parent
 sys.path.insert(0, str(parent_dir))
 sys.path.insert(0, str(current_dir))
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
 
 import django
+
 django.setup()
 
 import threading
-from rides.tasks import send_ride_notification
-from notifications.models import Notification
+
 from django.core.cache import cache
+
+from notifications.models import Notification
+from rides.tasks import send_ride_notification
 
 print("\n=== TASK 8 - Duplicate Prevention Test ===\n")
 
@@ -34,6 +37,7 @@ message = "Your ride is accepted"
 print(f"Firing SAME event 5 times concurrently for Ride {ride_id}...\n")
 results = []
 
+
 def fire_event(i):
     try:
         result = send_ride_notification.apply(args=[ride_id, event, message]).get()
@@ -42,7 +46,9 @@ def fire_event(i):
     except Exception as e:
         print(f"Thread-{i} Error: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 threads = []
 for i in range(1, 6):
@@ -58,4 +64,4 @@ count = Notification.objects.filter(ride_id=ride_id, event_type=event).count()
 print("\n--- FINAL DB CHECK ---")
 print(f"Total notifications in DB: {count}")
 print(f"Expected: 1, Actual: {count} -> {'PASS' if count==1 else 'FAIL'}")
-print("\nTask 8 Completed: Duplicate prevention working!" if count==1 else "\nFAIL")
+print("\nTask 8 Completed: Duplicate prevention working!" if count == 1 else "\nFAIL")

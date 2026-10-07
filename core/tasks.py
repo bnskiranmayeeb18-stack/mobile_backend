@@ -1,5 +1,7 @@
-from celery_app import shared_task
 import time
+
+from celery_app import shared_task
+
 
 @shared_task
 def test_celery_task():
