@@ -9,11 +9,11 @@ Date: 01-Sep-2026
 Fix: permission_classes = [IsAuthenticated, IsAdminUser]
 
 ## 3. IDOR (BOLA)
-Issue: /api/users/101 ni /api/users/102 ga marchi data chudatam
+Issue: /api/users/101 ni /api/users/102 
 Fix: User.objects.get(id=pk, owner=request.user)
 
 ## 4. Injection
-Fix: Django ORM use cheyyali, raw query vaddu
+Fix: Django ORM 
 
 ## 5. Rate Limiting
 Fix: DRF Throttling - 5/min for login

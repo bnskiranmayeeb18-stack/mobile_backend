@@ -1,7 +1,9 @@
-from django.urls import path
-
 app_name = "auth"
+
+from django.urls import path
+from .views import LoginView, RegisterView
+
 urlpatterns = [
-    # path('login/', LoginView.as_view()), # /api/v1/auth/login/
-    # path('register/', RegisterView.as_view()),
+    path('login/', LoginView.as_view()),
+    path('register/', RegisterView.as_view()),
 ]
