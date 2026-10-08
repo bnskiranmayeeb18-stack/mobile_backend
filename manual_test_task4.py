@@ -5,7 +5,7 @@ CREATE_URL = f"{BASE_URL}/api/rides/create/"
 GET_URL = f"{BASE_URL}/api/rides/"
 
 r = requests.post(LOGIN_URL, json={"username": "passenger1", "password": "test123"})
-token = r.json()['token']
+token = r.json()['access']
 headers = {"Authorization": f"Token {token}"}
 print(f"Login OK: {token[:10]}...\n")
 

@@ -1,4 +1,2 @@
-from django.http import JsonResponse
-
-def health_check(request):
-    return JsonResponse({"status": "ok", "message": "Server is running"})
+ws_log = logging.getLogger('websocket')
+ws_log.error(f"WS_ERROR ride_id={ride_id} error={e}")

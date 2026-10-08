@@ -58,7 +58,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'mobile_backend.wsgi.application'
 ASGI_APPLICATION = 'mobile_backend.asgi.application'
 
-# LOCAL DB - SQLITE
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -66,19 +65,16 @@ DATABASES = {
     }
 }
 
-# LOCAL CACHE
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
 
-# LOCAL CHANNELS
 CHANNEL_LAYERS = {
     "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
 }
 
-# DRF
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -89,6 +85,14 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '5/minute',
+        'user': '60/minute',
+    }
 }
 
 SIMPLE_JWT = {
@@ -104,29 +108,72 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
-# LOGGING - Task 3
-os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
+# LOGGING - Task 3 FIXED
+LOGS_DIR = BASE_DIR / 'logs'
+os.makedirs(LOGS_DIR, exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'sensitive_filter': {
+            '()': 'core.filters.SensitiveDataFilter',
+        },
+    },
     'formatters': {
-        'verbose': {'format': '{levelname} {asctime} {module} {message}', 'style': '{'},
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
     },
     'handlers': {
-        'file': {
+        'auth_file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'api.log'),
+            'filename': str(LOGS_DIR / 'auth.log'),
+            'formatter': 'verbose',
+            'filters': ['sensitive_filter'],
+        },
+        'api_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': str(LOGS_DIR / 'api.log'),
+            'formatter': 'verbose',
+            'filters': ['sensitive_filter'],
+        },
+        'ride_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': str(LOGS_DIR / 'ride.log'),
             'formatter': 'verbose',
         },
         'console': {
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
     },
     'loggers': {
-        'django.request': {'handlers': ['file', 'console'], 'level': 'ERROR', 'propagate': False},
-        'rides': {'handlers': ['file', 'console'], 'level': 'INFO', 'propagate': False},
+        'auth': {
+            'handlers': ['auth_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'api': {
+            'handlers': ['api_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'ride': {
+            'handlers': ['ride_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'rides': {
+            'handlers': ['ride_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
 
@@ -140,5 +187,4 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 CORS_ALLOW_ALL_ORIGINS = True
