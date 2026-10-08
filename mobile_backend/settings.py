@@ -1,9 +1,8 @@
 import os
-from dotenv import load_dotenv
-load_dotenv()
+from decouple import config
 
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'fallback-for-dev-only')
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-only-change-in-prod-12345!@#$%')
+DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
 
 # Application definition
