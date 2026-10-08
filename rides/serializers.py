@@ -4,10 +4,10 @@ from .models import Ride
 class RideListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ride
-        fields = ['id', 'status', 'pickup_location', 'drop_location', 'created_at', 'driver', 'rider']
-        read_only_fields = fields
+        fields = ['id', 'rider', 'pickup', 'drop', 'status', 'created_at']
+        read_only_fields = ['id', 'rider', 'created_at']
 
-class RideSerializer(serializers.ModelSerializer):
+class RideCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ride
-        fields = '__all__'
+        fields = ['pickup', 'drop', 'status']
