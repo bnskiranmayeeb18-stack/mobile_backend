@@ -1,9 +1,10 @@
 from django.urls import path
-from. import views
+from.views import RideListAPIView, RideDetailAPIView, RideCreateAPIView, RideUpdateAPIView, RideDeleteAPIView
 
 urlpatterns = [
-    path('', views.list_rides, name='list_rides'),
-    path('<int:ride_id>/', views.get_ride, name='get_ride'),
-    path('create/', views.create_ride, name='create_ride'),
-    path('<int:ride_id>/update/', views.update_delete_ride, name='update_delete_ride'),
+    path('', RideListAPIView.as_view(), name='ride-list'),
+    path('<int:id>/', RideDetailAPIView.as_view(), name='ride-detail'),
+    path('create/', RideCreateAPIView.as_view(), name='ride-create'),
+    path('<int:id>/update/', RideUpdateAPIView.as_view(), name='ride-update'),
+    path('<int:id>/delete/', RideDeleteAPIView.as_view(), name='ride-delete'),
 ]

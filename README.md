@@ -45,3 +45,7 @@ Ride Flow: REQUESTED -> ACCEPTED -> ONGOING -> COMPLETED working with PATCH /api
 All 4 endpoints return 401 without token (expected behaviour)
 
 ![Ride Cancelled API Proof](docs/api-proof.png)
+## EPIC 04 - Automated Testing
+- Total: 41 tests
+- Passed: 41
+- Command: pytest tests/ -v --junitxml=report.xml --cov=rides --cov=core

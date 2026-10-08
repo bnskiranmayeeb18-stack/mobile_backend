@@ -1,47 +1,59 @@
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from django.core.cache import cache
+from rest_framework import generics
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework import status
-from django.shortcuts import get_object_or_404
 from.models import Ride
-from.serializers import RideSerializer
+from.serializers import RideSerializer, RideListSerializer
+from.pagination import RidePagination
+from.cache_service import invalidate_ride_cache
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def list_rides(request):
-    # FIX: Only own rides - IDOR prevent
-    rides = Ride.objects.filter(rider=request.user)
-    serializer = RideSerializer(rides, many=True)
-    return Response(serializer.data)
+class RideListAPIView(generics.ListAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = RideListSerializer
+    pagination_class = RidePagination
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_ride(request, ride_id):
-    # FIX: IDOR - filter by rider=request.user
-    ride = get_object_or_404(Ride, id=ride_id, rider=request.user)
-    serializer = RideSerializer(ride)
-    return Response(serializer.data)
+    def get_queryset(self):
+        # Field name issue avoid cheyadaniki only() teesesanu
+        return Ride.objects.all().order_by('-created_at')
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_ride(request):
-    serializer = RideSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save(rider=request.user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def list(self, request, *args, **kwargs):
+        page = request.query_params.get('page', '1')
+        page_size = request.query_params.get('page_size', '10')
+        cache_key = f"rides_list_page_{page}_size_{page_size}"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=300)
+        return response
 
-@api_view(['PUT', 'DELETE'])
-@permission_classes([IsAuthenticated])
-def update_delete_ride(request, ride_id):
-    # FIX: IDOR - only owner can update/delete
-    ride = get_object_or_404(Ride, id=ride_id, rider=request.user)
-    if request.method == 'PUT':
-        serializer = RideSerializer(ride, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    elif request.method == 'DELETE':
-        ride.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+class RideDetailAPIView(generics.RetrieveAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = RideSerializer
+    lookup_field = 'id'
+    queryset = Ride.objects.all()
+
+class RideCreateAPIView(generics.CreateAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = RideSerializer
+    queryset = Ride.objects.all()
+    def perform_create(self, serializer):
+        serializer.save()
+        invalidate_ride_cache()
+
+class RideUpdateAPIView(generics.UpdateAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = RideSerializer
+    lookup_field = 'id'
+    queryset = Ride.objects.all()
+    def perform_update(self, serializer):
+        serializer.save()
+        invalidate_ride_cache()
+
+class RideDeleteAPIView(generics.DestroyAPIView):
+    permission_classes = [AllowAny]
+    lookup_field = 'id'
+    queryset = Ride.objects.all()
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        invalidate_ride_cache()
