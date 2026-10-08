@@ -1,12 +1,9 @@
 import os
-from pathlib import Path
-from decouple import config
+from dotenv import load_dotenv
+load_dotenv()
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# TASK 6 - SECURE CONFIG
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-only-change-in-prod-12345!@#$%')
-DEBUG = config('DEBUG', default=True, cast=bool)
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'fallback-for-dev-only')
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
 
 # Application definition
