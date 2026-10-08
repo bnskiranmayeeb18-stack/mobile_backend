@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'rest_framework_simplejwt.token_blacklist', 
     'rides',
     'notifications',
 ]
@@ -78,6 +79,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # TASK 5 - RATE LIMITING
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle'
@@ -86,6 +90,19 @@ REST_FRAMEWORK = {
         'anon': '10/min',
         'user': '100/min',
     }
+}
+# TASK 7 - JWT SECURITY REVIEW
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # Short-lived
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,  # Token rotation ON
+    'BLACKLIST_AFTER_ROTATION': True,  # Old refresh token blacklist
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
 # TASK 6 - SECURITY SETTINGS
@@ -109,4 +126,5 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
-SECURE_SSL_REDIRECT = not DEBUG  # Prod lo auto True, Dev lo False
+SECURE_SSL_REDIRECT = False
+SECURE_HSTS_SECONDS = 0
