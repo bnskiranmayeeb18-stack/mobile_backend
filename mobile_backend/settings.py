@@ -16,16 +16,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Third Party
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
     'channels',
     'drf_spectacular',
-    # Local
     'rides',
+    'authentication',
+    'notifications',
+    'core',
 ]
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
