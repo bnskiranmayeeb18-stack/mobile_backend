@@ -1,6 +1,7 @@
 # rides/tests.py - FINAL FIXED FOR v1
 from django.contrib.auth.models import User
 from rest_framework.test import APITestCase
+from django.core.cache import cache
 
 class AuthenticationModuleTests(APITestCase):
     def test_auth_valid_login_positive(self):
