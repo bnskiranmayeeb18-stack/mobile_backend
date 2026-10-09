@@ -1,2 +1,0 @@
-INFO 2026-10-08 18:42:36,351 views API_REQUEST path=/api/auth/register/ method=POST user_id=5 status=201
-INFO 2026-10-08 18:59:06,502 views API_REQUEST path=/api/auth/register/ method=POST user_id=6 status=201
