@@ -189,3 +189,76 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL', default=False, cast=bool)
 CORS_ALLOWED_ORIGINS = config('CORS_ORIGINS', default='http://localhost:3000', cast=lambda v: [s.strip() for s in v.split(',')])
+# ============ CELERY CONFIGURATION ============
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Kolkata'
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_TASK_SOFT_TIME_LIMIT = 20 * 60
+
+# Task Queues - Task 3
+from kombu import Queue
+CELERY_TASK_QUEUES = (
+    Queue('default', routing_key='default'),
+    Queue('notifications', routing_key='notifications'),
+    Queue('reports', routing_key='reports'),
+    Queue('maintenance', routing_key='maintenance'),
+)
+
+CELERY_TASK_ROUTES = {
+    'rides.tasks.py.send_ride_notification': {'queue': 'notifications'},
+    'notifications.tasks.py.send_notification': {'queue': 'notifications'},
+    'rides.tasks.py.generate_ride_report': {'queue': 'reports'},
+    'rides.tasks.py.generate_daily_summary': {'queue': 'reports'},
+    'rides.tasks.py.cleanup_expired_data': {'queue': 'maintenance'},
+    'rides.tasks.py.process_background_records': {'queue': 'maintenance'},
+}
+
+# Scheduled Jobs - Task 6
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    'cleanup-expired-every-hour': {
+        'task': 'rides.tasks.cleanup_expired_data',
+        'schedule': crontab(minute=0, hour='*'),
+    },
+    'daily-ride-summary-2am': {
+        'task': 'rides.tasks.generate_daily_summary',
+        'schedule': crontab(minute=0, hour=2),
+    },
+    'clean-temp-data-midnight': {
+        'task': 'rides.tasks.clean_old_temp_data',
+        'schedule': crontab(minute=0, hour=0),
+    },
+}
+
+# Update Throttle - Task 5 from previous story
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].update({
+    'login': '5/minute',
+    'sensitive': '10/minute',
+    'burst': '20/minute',
+})
+def test_report(self):
+    r=generate_ride_report.delay("2026-09-09")
+    self.assertIn("total_rides",r.get())
+
+def test_cleanup(self):
+    r=cleanup_expired_data.delay()
+    self.assertIn("Cleaned",r.get())
+
+def test_summary(self):
+    r=generate_daily_summary.delay()
+    self.assertIn("rides",r.get())
+    # For testing without Redis (EPIC 05 Task 8)
+    # CELERY_TASK_ALWAYS_EAGER = True  # uncomment for eager testing
+    # CELERY_TASK_EAGER_PROPAGATES = True
+    CELERY_TASK_DEFAULT_QUEUE = 'default'
+    CELERY_TASK_ALWAYS_EAGER = False
+    CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+    CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+
+
+

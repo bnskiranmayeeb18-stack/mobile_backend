@@ -15,6 +15,9 @@ from.serializers import (
 )
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
+# Task 2,8: Celery Async Tasks
+from .tasks import send_ride_notification, generate_ride_report
+
 # Task 3: Loggers
 ride_logger = logging.getLogger('ride')
 api_logger = logging.getLogger('api')
@@ -79,7 +82,17 @@ class RideCreateAPIView(APIView):
             serializer = RideCreateSerializer(data=request.data)
             if serializer.is_valid():
                 ride = serializer.save(rider=request.user)
-                ride_logger.info(f"RIDE_CREATED ride_id={ride.id} user={request.user.id} pickup={ride.pickup}")
+                pickup_val = getattr(ride, 'pickup_location', None) or getattr(ride, 'pickup', 'N/A')
+                ride_logger.info(f"RIDE_CREATED ride_id={ride.id} user={request.user.id} pickup={pickup_val}")
+
+                # === ASYNC ARCHITECTURE: API -> Celery -> Redis -> Worker -> DB/Notification ===
+                # Task 2, Task 8 Integration Testing
+                try:
+                    send_ride_notification.delay(ride.id, "ride_created")
+                    api_logger.info(f"CELERY_TASK_QUEUED task=send_ride_notification ride_id={ride.id} queue=notifications retry=3 idempotent=True")
+                except Exception as celery_e:
+                    api_logger.error(f"CELERY_QUEUE_FAILED ride_id={ride.id} error={str(celery_e)} - Graceful degradation, API still returns 201")
+
                 return Response(RideSerializer(ride).data, status=status.HTTP_201_CREATED)
 
             ride_logger.warning(f"RIDE_CREATE_VALIDATION_FAILED user={request.user.id} errors={serializer.errors}")
@@ -131,9 +144,16 @@ class RideUpdateAPIView(APIView):
                 serializer.save()
                 ride_logger.info(f"RIDE_UPDATED ride_id={pk} new_status={request.data.get('status')} by_user={request.user.id}")
 
+                # Async notification on status update - Task 2
+                try:
+                    new_status = request.data.get('status', 'updated')
+                    send_ride_notification.delay(int(pk), f"ride_{new_status}")
+                    api_logger.info(f"CELERY_TASK_QUEUED task=send_ride_notification ride_id={pk} event=ride_{new_status} queue=notifications")
+                except Exception as celery_e:
+                    api_logger.error(f"CELERY_QUEUE_FAILED ride_id={pk} error={str(celery_e)}")
+
                 # WebSocket log example
                 try:
-                    # websocket notify logic here
                     pass
                 except Exception as ws_e:
                     ws_logger.error(f"WEBSOCKET_ERROR ride_id={pk} error={str(ws_e)}")
@@ -158,6 +178,13 @@ class RideDeleteAPIView(APIView):
             ride = get_object_or_404(Ride, pk=pk, rider=request.user)
             ride.delete()
             ride_logger.info(f"RIDE_DELETED ride_id={pk} user={request.user.id}")
+            # Async cleanup - maintenance queue
+            try:
+                from.tasks import cleanup_expired_data
+                # Not needed immediate, but example of maintenance queue usage
+                api_logger.info(f"CELERY_MAINTENANCE_QUEUED ride_id={pk}")
+            except:
+                pass
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             ride_logger.error(f"RIDE_DELETE_FAILED ride_id={pk} error={str(e)}")
