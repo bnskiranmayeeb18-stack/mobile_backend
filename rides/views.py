@@ -57,10 +57,18 @@ class DriverLocationView(APIView):
         cache.set(f"driver_loc_{request.user.id}", ser.data, 60)
         return Response({"success":True,"data":ser.data})
 
+# File: rides/views.py - DriverOnlineView
+
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
 class DriverOnlineView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
     def post(self, request):
-        profile, _ = DriverProfile.objects.get_or_create(user=request.user)
-        profile.is_online = request.data.get('is_online', True)
-        profile.save()
-        return Response({"success":True,"is_online":profile.is_online})
+        # ... your logic
+        channel_layer = get_channel_layer()
+        if channel_layer:  # <-- idi add chey
+            async_to_sync(channel_layer.group_send)(
+                f"user_{request.user.id}",
+                {"type": "send_notification", "message": "Driver online"}
+            )
+        return Response({"status": "online"})

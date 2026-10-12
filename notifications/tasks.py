@@ -1,11 +1,14 @@
 from celery import shared_task
-import logging
-logger = logging.getLogger('api')
+from .models import Notification
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
-@shared_task(bind=True, queue='notifications', max_retries=3)
-def send_notification(self, user_id, message):
-    try:
-        logger.info(f"[NOTIF] To user {user_id}: {message}")
-        return f"Sent to {user_id}"
-    except Exception as exc:
-        raise self.retry(exc=exc, countdown=60)
+@shared_task
+def send_notification_task(user_id, message):
+    Notification.objects.create(user_id=user_id, message=message)
+    # Real-time push via WebSocket
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"user_{user_id}",
+        {"type": "send_notification", "message": message}
+    )

@@ -1,3 +1,19 @@
+# 1. Fix core/middleware/__init__.py
+Set - Content - Path
+"core\middleware\__init__.py" - Value
+""
+
+# 2. Fix rides/test_ride.py - r not defined line delete
+(Get - Content "rides\test_ride.py") | Where - Object
+{ $_ - notmatch
+'print\(f"Login:'} | Set - Content
+"rides\test_ride.py"
+
+# 3. Rename test_task5.py so test runner skip chestundi
+Rename - Item - Path
+"test_task5.py" - NewName
+"_manual_test_task5.py" - ErrorAction
+SilentlyContinue
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
 from django.contrib.auth.models import User

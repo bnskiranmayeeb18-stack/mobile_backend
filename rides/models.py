@@ -41,3 +41,35 @@ class Ride(models.Model):
         indexes = [models.Index(fields=['status', 'created_at'])]
 
     def __str__(self): return f"Ride {self.id} - {self.status}"
+
+    # Booking model lo add chey:
+    class Booking(models.Model):
+        class Status(models.TextChoices):
+            PENDING = 'PENDING', 'Pending'
+            CONFIRMED = 'CONFIRMED', 'Confirmed'
+            IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
+            COMPLETED = 'COMPLETED', 'Completed'
+            CANCELLED = 'CANCELLED', 'Cancelled'
+            PAYMENT_FAILED = 'PAYMENT_FAILED', 'Payment Failed'
+
+        VALID_TRANSITIONS = {
+            'PENDING': ['CONFIRMED', 'CANCELLED', 'PAYMENT_FAILED'],
+            'CONFIRMED': ['IN_PROGRESS', 'CANCELLED'],
+            'IN_PROGRESS': ['COMPLETED', 'CANCELLED'],
+            'COMPLETED': [],
+            'CANCELLED': [],
+            'PAYMENT_FAILED': [],
+        }
+
+        status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+
+        # ... your other fields
+
+        def can_transition(self, new_status):
+            return new_status in self.VALID_TRANSITIONS.get(self.status, [])
+
+        def update_status(self, new_status):
+            if not self.can_transition(new_status):
+                raise ValueError(f"Invalid transition {self.status} -> {new_status}")
+            self.status = new_status
+            self.save()
