@@ -1,16 +1,14 @@
-import os
 from pathlib import Path
-from datetime import timedelta
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-your-secret-key-change-in-prod-12345'
+SECRET_KEY = 'django-insecure-test-key-for-local-dev-only'
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["*"]
 
-# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -19,22 +17,21 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'rest_framework_simplejwt',
-    'corsheaders',
     'core',
     'rides',
     'notifications',
+
 ]
 MIDDLEWARE = [
-    'core.middleware.request_id.RequestIDMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.request_id.RequestIdMiddleware',
+    'core.middleware.performance.PerformanceMiddleware',
 ]
 
 ROOT_URLCONF = 'mobile_backend.urls'
@@ -56,9 +53,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'mobile_backend.wsgi.application'
-ASGI_APPLICATION = 'mobile_backend.asgi.application'
 
-# Database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -66,50 +61,35 @@ DATABASES = {
     }
 }
 
-# Password validation
-AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
-]
+AUTH_PASSWORD_VALIDATORS = []
 
-# Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS
-CORS_ALLOW_ALL_ORIGINS = True
+# DRF
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'core.exceptions.handler.custom_exception_handler',
+}
 
-# Cache - Redis with fallback to LocMem
+# CACHE - Redis optional, local memory fallback
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     }
 }
 
-# Try Redis if available
-try:
-    import django_redis
-    CACHES['default'] = {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
-        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
-    }
-except:
-    pass
+# CELERY
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 
-# Auth User
-AUTH_USER_MODEL = 'accounts.User' if 'accounts' in INSTALLED_APPS else 'auth.User'
-
-# ================= OBSERVABILITY - EPIC 10-SEP =================
-LOG_DIR = BASE_DIR / 'logs'
+# LOGGING - OBSERVABILITY
+LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
 LOGGING = {
@@ -117,71 +97,62 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'structured': {
-            'format': '[{asctime}] [{levelname}] [{name}] {message}',
+            'format': '[{asctime}] [{levelname}] [{name}] [req:{request_id}] [user:{user_id}] {method} {endpoint} {status_code} {execution_time}ms - {message}',
             'style': '{',
-            'datefmt': '%Y-%m-%d %H:%M:%S',
         },
+    },
+    'filters': {
+        'request_id': {
+            '()': 'core.middleware.request_id.RequestIdFilter',
+        }
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'filters': ['request_id'],
             'formatter': 'structured',
         },
-        'file_app': {
-            'class': 'logging.FileHandler',
+        'app_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': str(LOG_DIR / 'application.log'),
+            'maxBytes': 10*1024*1024,
+            'backupCount': 5,
+            'filters': ['request_id'],
             'formatter': 'structured',
         },
-        'file_api': {
-            'class': 'logging.FileHandler',
+        'api_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': str(LOG_DIR / 'api.log'),
+            'maxBytes': 10*1024*1024,
+            'backupCount': 5,
+            'filters': ['request_id'],
+            'formatter': 'structured',
+        },
+        'security_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOG_DIR / 'security.log'),
+            'maxBytes': 10*1024*1024,
+            'backupCount': 5,
+            'filters': ['request_id'],
+            'formatter': 'structured',
+        },
+        'celery_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOG_DIR / 'celery.log'),
+            'maxBytes': 10*1024*1024,
+            'backupCount': 5,
+            'filters': ['request_id'],
             'formatter': 'structured',
         },
     },
     'loggers': {
-        'application': {'handlers': ['console', 'file_app'], 'level': 'INFO', 'propagate': False},
-        'authentication': {'handlers': ['console', 'file_app'], 'level': 'INFO', 'propagate': False},
-        'api': {'handlers': ['console', 'file_api'], 'level': 'INFO', 'propagate': False},
-        'database': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
-        'celery': {'handlers': ['console', 'file_app'], 'level': 'INFO', 'propagate': False},
-        'websocket': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
-        'security': {'handlers': ['console', 'file_app'], 'level': 'WARNING', 'propagate': False},
-        'django.db.backends': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
+        'application': {'handlers': ['console','app_file'], 'level': 'INFO', 'propagate': False},
+        'authentication': {'handlers': ['console','app_file','security_file'], 'level': 'INFO', 'propagate': False},
+        'api': {'handlers': ['console','api_file'], 'level': 'INFO', 'propagate': False},
+        'database': {'handlers': ['console','app_file'], 'level': 'INFO', 'propagate': False},
+        'celery': {'handlers': ['console','celery_file'], 'level': 'INFO', 'propagate': False},
+        'websocket': {'handlers': ['console','app_file'], 'level': 'INFO', 'propagate': False},
+        'security': {'handlers': ['console','security_file'], 'level': 'WARNING', 'propagate': False},
+        'django.request': {'handlers': ['console','api_file'], 'level': 'WARNING', 'propagate': False},
     }
 }
-
-# REST Framework
-REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': 'core.exceptions.custom_exception_handler',
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],
-    'DEFAULT_THROTTLE_CLASSES': [
-        'core.throttling.BurstRateThrottle',
-        'core.throttling.SustainedRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'burst': '20/min',
-        'sustained': '100/hour',
-        'anon': '10/min',
-    }
-}
-
-# JWT
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-}
-
-# Celery
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'

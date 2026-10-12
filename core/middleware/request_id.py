@@ -1,23 +1,31 @@
 import uuid
-import time
 import logging
+import threading
 
-logger = logging.getLogger('api')
+_local = threading.local()
 
-class RequestIDMiddleware:
+class RequestIdFilter(logging.Filter):
+    def filter(self, record):
+        record.request_id = getattr(_local, 'request_id', 'no-request-id')
+        record.user_id = getattr(_local, 'user_id', 'anonymous')
+        record.method = getattr(_local, 'method', '-')
+        record.endpoint = getattr(_local, 'endpoint', '-')
+        record.status_code = getattr(_local, 'status_code', '-')
+        record.execution_time = getattr(_local, 'execution_time', '-')
+        return True
+
+def get_request_id():
+    return getattr(_local, 'request_id', None)
+
+class RequestIdMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
-
     def __call__(self, request):
         request_id = request.headers.get('X-Request-ID', str(uuid.uuid4())[:8])
-        request.request_id = request_id
-        request.start_time = time.time()
+        _local.request_id = request_id
+        _local.user_id = str(request.user.id) if hasattr(request, 'user') and request.user.is_authenticated else 'anonymous'
+        _local.method = request.method
+        _local.endpoint = request.path
         response = self.get_response(request)
-        duration = (time.time() - request.start_time) * 1000
-        user_id = getattr(request.user, 'id', 'anonymous') if hasattr(request, 'user') and getattr(request.user, 'is_authenticated', False) else 'anonymous'
-        logger.info(f"[{request_id}] [{user_id}] {request.method} {request.path} {response.status_code} {duration:.2f}ms")
         response['X-Request-ID'] = request_id
-        response['X-Execution-Time'] = f"{duration:.2f}ms"
-        if duration > 500:
-            logger.warning(f"SLOW API [{request_id}] {request.method} {request.path} took {duration:.2f}ms")
         return response
