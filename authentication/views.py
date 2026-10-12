@@ -57,3 +57,5 @@ class LoginView(APIView):
         except Exception as e:
             api_log.error(f"API_ERROR path=/api/auth/login/ error={str(e)}")
             return Response({"error": str(e)}, status=500)
+        # urls.py
+        path('api/auth/refresh/', TokenRefreshView.as_view())

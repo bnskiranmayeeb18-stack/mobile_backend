@@ -1,10 +1,10 @@
 from django.urls import path
-from .views import RideCreateView, RideAcceptView, RideStatusView, DriverLocationView, DriverOnlineView
+from. import views
 
 urlpatterns = [
-    path('', RideCreateView.as_view(), name='ride-create'),  # POST /api/v1/rides/
-    path('<int:ride_id>/accept/', RideAcceptView.as_view(), name='ride-accept'),
-    path('<int:ride_id>/status/', RideStatusView.as_view(), name='ride-status'),
-    path('driver/location/', DriverLocationView.as_view(), name='driver-location'),
-    path('driver/online/', DriverOnlineView.as_view(), name='driver-online'),
+    path('', views.list_rides, name='ride-list'),
+    path('create/', views.create_ride, name='ride-create'),
+    path('my/', views.my_rides, name='ride-my'),
+    path('<int:ride_id>/update/', views.update_ride, name='ride-update'),
+    path('driver/toggle/', views.driver_toggle, name='driver-toggle'),
 ]

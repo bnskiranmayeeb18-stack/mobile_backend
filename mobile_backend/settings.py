@@ -1,14 +1,9 @@
-import os
 from pathlib import Path
-
+from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-SECRET_KEY = 'django-insecure-dev-key-change-in-prod'
-
+SECRET_KEY = 'django-insecure-dev-key-change-me'
 DEBUG = True
-
 ALLOWED_HOSTS = ['*']
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -16,31 +11,22 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
-    # Third party
     'rest_framework',
-
-    # Local apps
+    'rest_framework_simplejwt',
     'core',
     'authentication',
     'rides',
-    'notifications',
-    'mobile_backend',
+    'user_profiles',
 ]
-
 MIDDLEWARE = [
-    'core.middleware.request_id.RequestIDMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
 ROOT_URLCONF = 'mobile_backend.urls'
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -56,76 +42,22 @@ TEMPLATES = [
         },
     },
 ]
-
 WSGI_APPLICATION = 'mobile_backend.wsgi.application'
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
-AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
-]
-
+DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3','NAME': BASE_DIR / 'db.sqlite3',}}
+AUTH_PASSWORD_VALIDATORS = []
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
-
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': 'core.exceptions.handler.custom_exception_handler',
+    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
+    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
+    'DEFAULT_PAGINATION_CLASS': 'core.pagination.StandardPagination',
+    'PAGE_SIZE': 10,
 }
-
-# === OBSERVABILITY LOGGING - TASK 1 ===
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'structured': {
-            'format': '[{asctime}] {levelname} [{name}] req_id=%(request_id)s | %(message)s',
-            'style': '%',
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'structured',
-        },
-        'file_app': {
-            'class': 'logging.FileHandler',
-            'filename': str(BASE_DIR / 'logs' / 'application.log'),
-            'formatter': 'structured',
-        },
-    },
-    'loggers': {
-        'application': {'handlers': ['console', 'file_app'], 'level': 'INFO', 'propagate': False},
-        'authentication': {'handlers': ['console', 'file_app'], 'level': 'INFO', 'propagate': False},
-        'api': {'handlers': ['console', 'file_app'], 'level': 'INFO', 'propagate': False},
-        'database': {'handlers': ['console', 'file_app'], 'level': 'INFO', 'propagate': False},
-        'celery': {'handlers': ['console', 'file_app'], 'level': 'INFO', 'propagate': False},
-        'websocket': {'handlers': ['console', 'file_app'], 'level': 'INFO', 'propagate': False},
-        'security': {'handlers': ['console', 'file_app'], 'level': 'WARNING', 'propagate': False},
-    },
-}
-
-# Celery
-CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
-    }
-}
-# Redis unte:
-# 'BACKEND': 'django_redis.cache.RedisCache',
-# 'LOCATION': 'redis://127.0.0.1:6379/1',
+SIMPLE_JWT = {'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),'REFRESH_TOKEN_LIFETIME': timedelta(days=1),}
+LOGGING = {'version':1,'disable_existing_loggers':False,'handlers':{'console':{'class':'logging.StreamHandler'}},'root':{'handlers':['console'],'level':'INFO'}}
