@@ -1,13 +1,14 @@
-from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
-class LoginRateThrottle(AnonRateThrottle):
-    scope = 'login'
-    rate = '5/minute'
+class BurstRateThrottle(UserRateThrottle):
+    scope = 'burst'
 
-class SensitiveOpsThrottle(UserRateThrottle):
-    scope = 'sensitive'
-    rate = '10/minute'
+class SustainedRateThrottle(UserRateThrottle):
+    scope = 'sustained'
+    rate = '100/hour'
 
 class BurstThrottle(UserRateThrottle):
     scope = 'burst'
-    rate = '20/minute'
+
+class AnonBurstThrottle(AnonRateThrottle):
+    scope = 'anon'

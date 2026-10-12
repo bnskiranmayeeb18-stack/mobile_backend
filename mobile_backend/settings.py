@@ -1,14 +1,16 @@
 import os
 from pathlib import Path
-from decouple import config
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-only-change-in-prod-12345!@#$%')
-DEBUG = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=lambda v: [s.strip() for s in v.split(',')])
+SECRET_KEY = 'django-insecure-your-secret-key-change-in-prod-12345'
 
+DEBUG = True
+
+ALLOWED_HOSTS = ['*']
+
+# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -19,17 +21,15 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-    'channels',
-    'drf_spectacular',
-    'rides',
-    'authentication',
-    'notifications',
     'core',
+    'rides',
+    'notifications',
 ]
 MIDDLEWARE = [
+    'core.middleware.request_id.RequestIDMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -58,6 +58,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'mobile_backend.wsgi.application'
 ASGI_APPLICATION = 'mobile_backend.asgi.application'
 
+# Database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -65,200 +66,122 @@ DATABASES = {
     }
 }
 
+# Password validation
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+# Internationalization
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = 'static/'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# CORS
+CORS_ALLOW_ALL_ORIGINS = True
+
+# Cache - Redis with fallback to LocMem
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
     }
 }
 
-CHANNEL_LAYERS = {
-    "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
-}
-
-REST_FRAMEWORK = {
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '5/minute',
-        'user': '60/minute',
+# Try Redis if available
+try:
+    import django_redis
+    CACHES['default'] = {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
     }
-}
+except:
+    pass
 
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'SIGNING_KEY': SECRET_KEY,
-}
+# Auth User
+AUTH_USER_MODEL = 'accounts.User' if 'accounts' in INSTALLED_APPS else 'auth.User'
 
-SPECTACULAR_SETTINGS = {
-    'TITLE': 'Mobile Backend API',
-    'DESCRIPTION': 'Production Ready Ride Sharing Backend - Final Audit',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
-}
-
-# LOGGING - Task 3 FIXED
-LOGS_DIR = BASE_DIR / 'logs'
-os.makedirs(LOGS_DIR, exist_ok=True)
+# ================= OBSERVABILITY - EPIC 10-SEP =================
+LOG_DIR = BASE_DIR / 'logs'
+LOG_DIR.mkdir(exist_ok=True)
 
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'filters': {
-        'sensitive_filter': {
-            '()': 'core.filters.SensitiveDataFilter',
-        },
-    },
     'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
+        'structured': {
+            'format': '[{asctime}] [{levelname}] [{name}] {message}',
             'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
         },
     },
     'handlers': {
-        'auth_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': str(LOGS_DIR / 'auth.log'),
-            'formatter': 'verbose',
-            'filters': ['sensitive_filter'],
-        },
-        'api_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': str(LOGS_DIR / 'api.log'),
-            'formatter': 'verbose',
-            'filters': ['sensitive_filter'],
-        },
-        'ride_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': str(LOGS_DIR / 'ride.log'),
-            'formatter': 'verbose',
-        },
         'console': {
-            'level': 'INFO',
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+            'formatter': 'structured',
+        },
+        'file_app': {
+            'class': 'logging.FileHandler',
+            'filename': str(LOG_DIR / 'application.log'),
+            'formatter': 'structured',
+        },
+        'file_api': {
+            'class': 'logging.FileHandler',
+            'filename': str(LOG_DIR / 'api.log'),
+            'formatter': 'structured',
         },
     },
     'loggers': {
-        'auth': {
-            'handlers': ['auth_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'api': {
-            'handlers': ['api_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'ride': {
-            'handlers': ['ride_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'rides': {
-            'handlers': ['ride_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
+        'application': {'handlers': ['console', 'file_app'], 'level': 'INFO', 'propagate': False},
+        'authentication': {'handlers': ['console', 'file_app'], 'level': 'INFO', 'propagate': False},
+        'api': {'handlers': ['console', 'file_api'], 'level': 'INFO', 'propagate': False},
+        'database': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
+        'celery': {'handlers': ['console', 'file_app'], 'level': 'INFO', 'propagate': False},
+        'websocket': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'security': {'handlers': ['console', 'file_app'], 'level': 'WARNING', 'propagate': False},
+        'django.db.backends': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
     },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    }
 }
 
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = 'DENY'
+# REST Framework
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'core.exceptions.custom_exception_handler',
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'core.throttling.BurstRateThrottle',
+        'core.throttling.SustainedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'burst': '20/min',
+        'sustained': '100/hour',
+        'anon': '10/min',
+    }
+}
 
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Asia/Kolkata'
-USE_I18N = True
-USE_TZ = True
-STATIC_URL = 'static/'
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL', default=False, cast=bool)
-CORS_ALLOWED_ORIGINS = config('CORS_ORIGINS', default='http://localhost:3000', cast=lambda v: [s.strip() for s in v.split(',')])
-# ============ CELERY CONFIGURATION ============
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+# JWT
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+}
+
+# Celery
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'Asia/Kolkata'
-CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60
-CELERY_TASK_SOFT_TIME_LIMIT = 20 * 60
-
-# Task Queues - Task 3
-from kombu import Queue
-CELERY_TASK_QUEUES = (
-    Queue('default', routing_key='default'),
-    Queue('notifications', routing_key='notifications'),
-    Queue('reports', routing_key='reports'),
-    Queue('maintenance', routing_key='maintenance'),
-)
-
-CELERY_TASK_ROUTES = {
-    'rides.tasks.py.send_ride_notification': {'queue': 'notifications'},
-    'notifications.tasks.py.send_notification': {'queue': 'notifications'},
-    'rides.tasks.py.generate_ride_report': {'queue': 'reports'},
-    'rides.tasks.py.generate_daily_summary': {'queue': 'reports'},
-    'rides.tasks.py.cleanup_expired_data': {'queue': 'maintenance'},
-    'rides.tasks.py.process_background_records': {'queue': 'maintenance'},
-}
-
-# Scheduled Jobs - Task 6
-from celery.schedules import crontab
-CELERY_BEAT_SCHEDULE = {
-    'cleanup-expired-every-hour': {
-        'task': 'rides.tasks.cleanup_expired_data',
-        'schedule': crontab(minute=0, hour='*'),
-    },
-    'daily-ride-summary-2am': {
-        'task': 'rides.tasks.generate_daily_summary',
-        'schedule': crontab(minute=0, hour=2),
-    },
-    'clean-temp-data-midnight': {
-        'task': 'rides.tasks.clean_old_temp_data',
-        'schedule': crontab(minute=0, hour=0),
-    },
-}
-
-# Update Throttle - Task 5 from previous story
-REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].update({
-    'login': '5/minute',
-    'sensitive': '10/minute',
-    'burst': '20/minute',
-})
-def test_report(self):
-    r=generate_ride_report.delay("2026-09-09")
-    self.assertIn("total_rides",r.get())
-
-def test_cleanup(self):
-    r=cleanup_expired_data.delay()
-    self.assertIn("Cleaned",r.get())
-
-def test_summary(self):
-    r=generate_daily_summary.delay()
-    self.assertIn("rides",r.get())
-    # For testing without Redis (EPIC 05 Task 8)
-    # CELERY_TASK_ALWAYS_EAGER = True  # uncomment for eager testing
-    # CELERY_TASK_EAGER_PROPAGATES = True
-    CELERY_TASK_DEFAULT_QUEUE = 'default'
-    CELERY_TASK_ALWAYS_EAGER = False
-    CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-    CELERY_WORKER_HIJACK_ROOT_LOGGER = False
-
-
-
