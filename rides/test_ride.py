@@ -4,7 +4,7 @@ BASE = "http://127.0.0.1:8000"
 
 # 1. Register / Login
 print("=== LOGIN ===")
-r = requests.post(f"{BASE}/api/v1/auth/login/", json={"username":"admin","password":"admin123"})
+# r = requests.post(f"{BASE}/api/v1/auth/login/"...)  # Comment this
 print(f"Login: {r.status_code} {r.text}")
 if r.status_code != 200:
     r = requests.post(f"{BASE}/api/v1/auth/register/", json={"username":"admin","password":"admin123","email":"admin@test.com"})

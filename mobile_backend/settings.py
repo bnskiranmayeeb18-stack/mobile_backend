@@ -129,3 +129,7 @@ CACHES = {
 # Redis unte:
 # 'BACKEND': 'django_redis.cache.RedisCache',
 # 'LOCATION': 'redis://127.0.0.1:6379/1',
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': True,
+}

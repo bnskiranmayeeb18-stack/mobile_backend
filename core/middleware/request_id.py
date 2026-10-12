@@ -1,41 +1,50 @@
 import uuid
-import time
 import logging
-import contextvars
+from django.utils.deprecation import MiddlewareMixin
 
-request_id_ctx = contextvars.ContextVar('request_id', default=None)
 logger_api = logging.getLogger('api')
-logger_app = logging.getLogger('application')
+logger = logging.getLogger(__name__)
 
-class RequestIDMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
 
+class RequestIDMiddleware(MiddlewareMixin):
     def __call__(self, request):
-        req_id = request.headers.get('X-Request-ID', str(uuid.uuid4())[:8])
-        request.request_id = req_id
-        request_id_ctx.set(req_id)
-        request.start_time = time.time()
+        # Generate request_id
+        request_id = str(uuid.uuid4())[:8]
+        request.request_id = request_id
+
+        # Attach to thread local for logging
+        import threading
+        threading.current_thread().request_id = request_id
 
         response = self.get_response(request)
 
-        duration = (time.time() - request.start_time) * 1000
-        user_id = getattr(request.user, 'id', None) if hasattr(request, 'user') and request.user.is_authenticated else 'anonymous'
+        # Add to response header
+        response['X-Request-ID'] = request_id
 
-        log_data = {
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "request_id": req_id,
-            "user_id": str(user_id),
-            "endpoint": request.path,
-            "method": request.method,
-            "status": response.status_code,
-            "duration_ms": round(duration, 2),
-        }
+        # Log slow APIs
+        try:
+            import time
+            start = getattr(request, '_start_time', None)
+            if start:
+                duration = (time.time() - start) * 1000
+                if duration > 1000:  # >1 sec
+                    user_id = getattr(request.user, 'id', 'anonymous') if hasattr(request, 'user') else 'anonymous'
+                    log_data = {
+                        'timestamp': __import__('datetime').datetime.utcnow().isoformat() + 'Z',
+                        'request_id': request_id,
+                        'user_id': str(user_id),
+                        # logger_api.warning(f"SLOW API | {log_data}")  # comment this
+                        'method': request.method,
+                        'status': response.status_code,
+                        'duration_ms': round(duration, 2)
+                    }
+                    logger_api.warning(f"SLOW API | {log_data}", extra={'request_id': request_id})
+        except:
+            pass
 
-        if duration > 500:
-            logger_api.warning(f"SLOW API | {log_data}")
-        else:
-            logger_api.info(f"{log_data}")
-
-        response['X-Request-ID'] = req_id
         return response
+
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        import time
+        request._start_time = time.time()
+        return None
