@@ -1,60 +1,54 @@
-import uuid
 from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings
+from django.core.exceptions import ValidationError
 
-def service_image_path(instance, filename):
-    return f"services/{filename}"
-class Ride(models.Model):
-    STATUS_CHOICES = [
-        ('requested','requested'),
-        ('accepted','accepted'),
-        ('started','started'),
-        ('completed','completed'),
-        ('cancelled','cancelled'),
-    ]
-    rider = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rides')
-    driver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='driven_rides')
-    pickup = models.CharField(max_length=255)
-    drop = models.CharField(max_length=255)
-    pickup_lat = models.FloatField(null=True, blank=True)
-    pickup_lng = models.FloatField(null=True, blank=True)
-    dest_lat = models.FloatField(null=True, blank=True)
-    dest_lng = models.FloatField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='requested')
-    ride_type = models.CharField(max_length=20, default='STANDARD')
-    created_at = models.DateTimeField(auto_now_add=True)
 
-class DriverProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    is_online = models.BooleanField(default=False)
-# Booking model lo add chey:
+class BookingStatus(models.TextChoices):
+    PENDING = 'PENDING', 'Pending'
+    CONFIRMED = 'CONFIRMED', 'Confirmed'
+    IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
+    COMPLETED = 'COMPLETED', 'Completed'
+    CANCELLED = 'CANCELLED', 'Cancelled'
+    PAYMENT_FAILED = 'PAYMENT_FAILED', 'Payment Failed'
+
+
+# Valid transitions map - TASK 2
+VALID_TRANSITIONS = {
+    BookingStatus.PENDING: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED, BookingStatus.PAYMENT_FAILED],
+    BookingStatus.CONFIRMED: [BookingStatus.IN_PROGRESS, BookingStatus.CANCELLED],
+    BookingStatus.IN_PROGRESS: [BookingStatus.COMPLETED],
+    BookingStatus.COMPLETED: [],
+    BookingStatus.CANCELLED: [],
+    BookingStatus.PAYMENT_FAILED: [],
+}
+
+
 class Booking(models.Model):
-    class Status(models.TextChoices):
-        PENDING = 'PENDING', 'Pending'
-        CONFIRMED = 'CONFIRMED', 'Confirmed'
-        IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
-        COMPLETED = 'COMPLETED', 'Completed'
-        CANCELLED = 'CANCELLED', 'Cancelled'
-        PAYMENT_FAILED = 'PAYMENT_FAILED', 'Payment Failed'
+    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='bookings')
+    provider = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='provided_bookings')
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookings')
-    ride = models.ForeignKey(Ride, on_delete=models.CASCADE, related_name='bookings', null=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    service_name = models.CharField(max_length=100)
+    status = models.CharField(max_length=20, choices=BookingStatus.choices, default=BookingStatus.PENDING)
+
+    # TASK 7 - Data Integrity
+    idempotency_key = models.CharField(max_length=100, unique=True, null=True, blank=True)  # Duplicate prevention
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Required field
+
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-    VALID_TRANSITIONS = {
-        'PENDING': ['CONFIRMED', 'CANCELLED', 'PAYMENT_FAILED'],
-        'CONFIRMED': ['IN_PROGRESS', 'CANCELLED'],
-        'IN_PROGRESS': ['COMPLETED', 'CANCELLED'],
-        'COMPLETED': [], 'CANCELLED': [], 'PAYMENT_FAILED': [],
-    }
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['customer', 'idempotency_key'], name='unique_idempotency_per_customer'),
+        ]
 
-    def can_transition(self, new_status):
-        return new_status in self.VALID_TRANSITIONS.get(self.status, [])
+    def can_transition_to(self, new_status):
+        return new_status in VALID_TRANSITIONS.get(self.status, [])
 
-    def update_status(self, new_status):
-        if not self.can_transition(new_status):
-            raise ValueError(f"Invalid transition {self.status} -> {new_status}")
-        self.status = new_status
-        self.save()
+    def clean(self):
+        # Valid statuses already handled by choices
+        pass
+
+    def __str__(self):
+        return f"{self.id} - {self.status}"
