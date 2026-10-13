@@ -1,22 +1,9 @@
-# rides/admin.py
 from django.contrib import admin
-from .models import Ride
+from .models import Booking
 
-# vere models em unnayo chuddam, dynamic ga register cheddam
-from django.apps import apps
-
-# Only Ride register chesi chudu
-admin.site.register(Ride)
-
-# Migilavi unte auto ga kanukko
-try:
-    from .models import DriverProfile
-    admin.site.register(DriverProfile)
-except:
-    pass
-
-try:
-    from .models import Booking
-    admin.site.register(Booking)
-except:
-    pass
+@admin.register(Booking)
+class BookingAdmin(admin.ModelAdmin):
+    list_display = ['id', 'customer', 'provider', 'service_name', 'status', 'amount', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['service_name', 'idempotency_key']
+    readonly_fields = ['id', 'created_at', 'updated_at']
