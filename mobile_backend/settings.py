@@ -15,6 +15,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'core',
     'authentication',
+    'payments',
+    'notifications',
     'rides',
     'user_profiles',
 ]

@@ -13,9 +13,11 @@ urlpatterns = [
     path('api/v1/auth/', include('authentication.urls')),
     path('api/v1/rides/', include('rides.urls')),
     path('api/v1/profile/', include('user_profiles.urls')),
+    path('api/v1/payments/', include('payments.urls')),
     path('api/rides/', include('rides.urls')),
     path('api/auth/', include('authentication.urls')),
     path('api/', include('user_profiles.urls')),
 ]
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
