@@ -50,3 +50,5 @@ python manage.py check
 
 python manage.py test rides.tests -v 0
 # Ran 20 tests in 11.886s - OK
+
+Add-Content README.md "`n## Database Design`nSee docs/DATABASE_DESIGN.md"

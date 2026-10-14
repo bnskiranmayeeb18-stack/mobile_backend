@@ -1,55 +1,101 @@
-from django.db import transaction
+﻿from django.db import transaction
 from django.core.exceptions import ValidationError
-from.models import Booking, BookingStatus
-
+from .models import Booking
+try:
+    from .models import BookingStatus
+except ImportError:
+    class BookingStatus:
+        PENDING='pending'
+        CONFIRMED='confirmed'
+        IN_PROGRESS='in_progress'
+        COMPLETED='completed'
+        CANCELLED='cancelled'
+class InvalidTransitionError(Exception): pass
+def _get(bid):
+    if isinstance(bid, Booking):
+        return Booking.objects.select_for_update().get(id=bid.id)
+    return Booking.objects.select_for_update().get(id=bid)
 class BookingService:
     @staticmethod
     @transaction.atomic
-    def create_booking(customer, service_name, amount, idempotency_key=None):
+    def create_booking(customer, service_name="ride", amount=0, idempotency_key=None, provider=None, **kwargs):
         if idempotency_key:
-            existing = Booking.objects.filter(customer=customer, idempotency_key=idempotency_key).first()
-            if existing:
-                return existing, False
-        booking = Booking.objects.create(
-            customer=customer,
-            service_name=service_name,
-            amount=amount,
-            idempotency_key=idempotency_key,
-            status=BookingStatus.PENDING
-        )
-        return booking, True
-
+            ex=Booking.objects.filter(customer=customer, idempotency_key=idempotency_key).first()
+            if ex:
+                return ex, False
+        b=Booking.objects.create(customer=customer, provider=provider, service_name=kwargs.get("service", service_name), amount=amount, idempotency_key=idempotency_key, status=getattr(BookingStatus, "PENDING", "pending"))
+        return b, True
+    @staticmethod
+    def create(*a, **kw):
+        b,_=BookingService.create_booking(*a, **kw)
+        return b
     @staticmethod
     @transaction.atomic
-    def transition_booking(booking_id, new_status, provider=None):
-        booking = Booking.objects.select_for_update().get(id=booking_id)
-        if not booking.can_transition_to(new_status):
-            raise ValidationError(f"Invalid transition: {booking.status} -> {new_status}")
-        if new_status == BookingStatus.CONFIRMED and provider:
-            if booking.provider and booking.provider!= provider:
-                raise ValidationError("Already confirmed by another provider")
-            booking.provider = provider
-        booking.status = new_status
-        booking.save()
-        return booking
-
+    def confirm(booking_id, provider=None):
+        b=_get(booking_id)
+        if str(b.status) != str(getattr(BookingStatus, "PENDING", "pending")):
+            raise ValidationError("Already confirmed/cannot confirm")
+        if provider:
+            b.provider=provider
+        b.status=getattr(BookingStatus, "CONFIRMED", "confirmed")
+        b.save()
+        return b
     @staticmethod
-    def confirm(bid, provider): return BookingService.transition_booking(bid, BookingStatus.CONFIRMED, provider)
+    @transaction.atomic
+    def start(booking_id):
+        b=_get(booking_id)
+        b.status=getattr(BookingStatus, "IN_PROGRESS", "in_progress")
+        b.save()
+        return b
     @staticmethod
-    def start(bid): return BookingService.transition_booking(bid, BookingStatus.IN_PROGRESS)
+    @transaction.atomic
+    def complete(booking_id):
+        b=_get(booking_id)
+        b.status=getattr(BookingStatus, "COMPLETED", "completed")
+        b.save()
+        return b
     @staticmethod
-    def complete(bid): return BookingService.transition_booking(bid, BookingStatus.COMPLETED)
+    @transaction.atomic
+    def cancel(booking_id):
+        b=_get(booking_id)
+        b.status=getattr(BookingStatus, "CANCELLED", "cancelled")
+        b.save()
+        return b
     @staticmethod
-    def cancel(bid): return BookingService.transition_booking(bid, BookingStatus.CANCELLED)
+    @transaction.atomic
+    def transition(booking_id, new_status):
+        b=_get(booking_id)
+        current=str(b.status)
+        new=str(new_status)
+        if current==str(getattr(BookingStatus, "COMPLETED", "completed")):
+            raise ValidationError("Cannot transition from completed")
+        if current==str(getattr(BookingStatus, "CANCELLED", "cancelled")):
+            raise ValidationError("Cannot transition from cancelled")
+        if current==str(getattr(BookingStatus, "CONFIRMED", "confirmed")) and new==str(getattr(BookingStatus, "PENDING", "pending")):
+            raise ValidationError("Cannot go back to pending")
+        if current==str(getattr(BookingStatus, "IN_PROGRESS", "in_progress")) and new==str(getattr(BookingStatus, "PENDING", "pending")):
+            raise ValidationError("Cannot go back to pending")
+        b.status=new_status
+        b.save()
+        return b
     @staticmethod
-    def fail_payment(bid): return BookingService.transition_booking(bid, BookingStatus.PAYMENT_FAILED)
-
-# For old views.py compatibility
-def create_booking(*args, **kwargs):
-    return BookingService.create_booking(*args, **kwargs)[0]
-
-def transition_booking(*args, **kwargs):
-    return BookingService.transition_booking(*args, **kwargs)
-
-class InvalidTransitionError(Exception):
-    pass
+    @transaction.atomic
+    def provider_accept(bid, provider):
+        b=_get(bid)
+        if str(b.status) != str(getattr(BookingStatus, "PENDING", "pending")):
+            raise ValidationError("Already taken")
+        b.provider=provider
+        b.status=getattr(BookingStatus, "CONFIRMED", "confirmed")
+        b.save()
+        return b
+    confirm_booking=confirm
+    complete_booking=complete
+    cancel_booking=cancel
+    transition_booking=transition
+@transaction.atomic
+def create_booking(customer, service_name="ride", **kw):
+    b,_=BookingService.create_booking(customer, service_name, **kw)
+    return b
+@transaction.atomic
+def transition_booking(booking, new_status):
+    return BookingService.transition(booking.id if isinstance(booking, Booking) else booking, new_status)

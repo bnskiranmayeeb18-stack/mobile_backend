@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'user_profiles',
     'payments',
     'notifications',
+    'saved_services',
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -63,3 +64,24 @@ REST_FRAMEWORK = {
 }
 SIMPLE_JWT = {'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),'REFRESH_TOKEN_LIFETIME': timedelta(days=1),}
 LOGGING = {'version':1,'disable_existing_loggers':False,'handlers':{'console':{'class':'logging.StreamHandler'}},'root':{'handlers':['console'],'level':'INFO'}}
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "saved-services-cache",
+    }
+}
+
+# Celery Configuration - FOR WINDOWS DEV (No Redis needed)
+CELERY_BROKER_URL = 'memory://'
+CELERY_RESULT_BACKEND = 'cache+memory://'
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = False
+
+# Cache - FOR WINDOWS DEV
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
+    }
+}
