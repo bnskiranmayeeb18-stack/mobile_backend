@@ -1,13 +1,12 @@
 ﻿from django.urls import path
-from . import views
+from. import views
 
 urlpatterns = [
-    path('bookings/', views.create_booking_view, name='booking-create'),
-    path('bookings/list/', views.list_bookings_view, name='booking-list'),
-    path('bookings/<str:pk>/', views.retrieve_booking_view, name='booking-detail'),
-    path('bookings/<str:booking_id>/status/', views.update_status_view, name='booking-status-update'),
-    path('bookings/<str:booking_id>/confirm/', views.confirm_booking_view, name='booking-confirm'),
-    path('bookings/<str:booking_id>/start/', views.start_booking_view, name='booking-start'),
-    path('bookings/<str:booking_id>/complete/', views.complete_booking_view, name='booking-complete'),
-    path('bookings/<str:booking_id>/cancel/', views.cancel_booking_view, name='booking-cancel'),
+    path('', views.ride_list_create, name='ride-list'),
+    path('create/', views.ride_create, name='ride-create'),
+    path('<int:pk>/update/', views.ride_update, name='ride-update'),
+    path('<int:pk>/accept/', views.ride_accept, name='ride-accept'),
+    path('<int:pk>/start/', views.ride_start, name='ride-start'),
+    path('<int:pk>/complete/', views.ride_complete, name='ride-complete'),
+    path('<int:pk>/cancel/', views.ride_cancel, name='ride-cancel'),
 ]
