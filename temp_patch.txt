@@ -1,0 +1,46 @@
+# Add to top of rides/views.py
+from core.idempotency import idempotent
+from core.pagination import RideCursorPagination
+from django.utils.dateparse import parse_datetime
+
+# UPDATE ride_create
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@idempotent
+def ride_create(request):
+    return _create_ride(request)
+
+# ADD NEW SYNC VIEW at bottom
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ride_sync(request):
+    # incremental sync:?since=2024-01-01T00:00:00Z&cursor=&limit=20
+    since = request.query_params.get('since')
+    limit = int(request.query_params.get('limit', 20))
+
+    rides = Ride.objects.filter(rider=request.user)
+
+    if since:
+        dt = parse_datetime(since)
+        if dt:
+            rides = rides.filter(updated_at__gt=dt)
+
+    rides = rides.order_by('-updated_at', '-id')[:limit]
+
+    # next cursor = last item updated_at
+    next_cursor = None
+    has_more = False
+    if rides:
+        last = rides[len(rides)-1]
+        next_cursor = last.updated_at.isoformat()
+        has_more = Ride.objects.filter(rider=request.user, updated_at__lt=last.updated_at).exists()
+
+    from.serializers import RideSerializer
+    from django.utils import timezone
+    return Response({
+        'data': RideSerializer(rides, many=True).data,
+        'next_cursor': next_cursor,
+        'has_more': has_more,
+        'server_time': timezone.now().isoformat(),
+        'version': 1
+    })

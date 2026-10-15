@@ -1,25 +1,7 @@
-from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
+﻿# core/pagination.py
+from rest_framework.pagination import CursorPagination
 
-class StandardPagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = "page_size"
-    max_page_size = 100
-    def get_paginated_response(self, data):
-        return Response({
-            "success": True,
-            "message": "Data fetched",
-            "error_code": None,
-            "data": {
-                "items": data,
-                "pagination": {
-                    "count": self.page.paginator.count,
-                    "total_pages": self.page.paginator.num_pages,
-                    "current_page": self.page.number,
-                    "page_size": self.get_page_size(self.request),
-                }
-            }
-        })
-
-class RidePagination(StandardPagination):
+class RideCursorPagination(CursorPagination):
     page_size = 20
+    ordering = '-updated_at'
+    cursor_query_param = 'cursor'

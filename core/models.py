@@ -1,29 +1,27 @@
-import uuid
+﻿from django.db import models
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+import datetime
 
-from django.db import models
+User = get_user_model()
 
-
-class Ride(models.Model):
-    STATUS_CHOICES = [
-        ("REQUESTED", "REQUESTED"),
-        ("ACCEPTED", "ACCEPTED"),
-        ("DRIVER_ARRIVING", "DRIVER_ARRIVING"),
-        ("STARTED", "STARTED"),
-        ("COMPLETED", "COMPLETED"),
-        ("CANCELLED", "CANCELLED"),
-    ]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
-    # Basic ride info
-    passenger_id = models.CharField(max_length=100, default="passenger_123")
-    driver_id = models.CharField(max_length=100, null=True, blank=True)
-
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="REQUESTED"
-    )
+class IdempotencyKey(models.Model):
+    key = models.CharField(max_length=128)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    method = models.CharField(max_length=10)
+    path = models.CharField(max_length=512)
+    request_hash = models.CharField(max_length=64)
+    response_status = models.IntegerField()
+    response_body = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(default=lambda: timezone.now() + datetime.timedelta(hours=24))
 
-    def __str__(self):
-        return f"{self.id} - {self.status}"
+    class Meta:
+        unique_together = ('key', 'user')
+        indexes = [
+            models.Index(fields=['key', 'user']),
+            models.Index(fields=['expires_at']),
+        ]
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
