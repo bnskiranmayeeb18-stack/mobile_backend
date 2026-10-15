@@ -1,52 +1,47 @@
-﻿# core/idempotency.py
-import hashlib, json
+﻿import json
 from functools import wraps
-from django.utils import timezone
+from django.core.cache import cache
 from rest_framework.response import Response
-from.models import IdempotencyKey
 
-def get_request_hash(data):
-    try:
-        body = json.dumps(data, sort_keys=True)
-    except:
-        body = str(data)
-    return hashlib.sha256(body.encode()).hexdigest()
+def get_django_request(request):
+    # DRF Request ayite _request lo HttpRequest untadi, lekapote ade HttpRequest
+    return getattr(request, '_request', request)
+
+def get_key(request):
+    # DRF request.headers nundi, lekapote META nundi
+    key = None
+    if hasattr(request, 'headers'):
+        key = request.headers.get('Idempotency-Key')
+    if not key:
+        dj_req = get_django_request(request)
+        key = dj_req.META.get('HTTP_IDEMPOTENCY_KEY') or dj_req.META.get('HTTP_IDEMPOTENCY-KEY')
+    return key
 
 def idempotent(view_func):
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
-        key = request.headers.get('Idempotency-Key') or request.META.get('HTTP_IDEMPOTENCY_KEY')
+        key = get_key(request)
         if not key:
+            # Key lekapote normal ga continue
             return view_func(request, *args, **kwargs)
 
-        req_hash = get_request_hash(request.data if hasattr(request, 'data') else {})
+        user_id = getattr(request.user, 'id', 'anon') if hasattr(request, 'user') else 'anon'
+        cache_key = f"idem:{user_id}:{key}"
 
-        try:
-            existing = IdempotencyKey.objects.get(key=key, user=request.user)
-            if existing.is_expired():
-                existing.delete()
-            else:
-                if existing.request_hash!= req_hash:
-                    return Response({'error':'Idempotency key reuse with different payload'}, status=409)
-                # replay
-                import json as js
-                return Response(js.loads(existing.response_body), status=existing.response_status)
-        except IdempotencyKey.DoesNotExist:
-            pass
+        cached = cache.get(cache_key)
+        if cached:
+            # Duplicate request - same response return, DB hit avadu
+            return Response(cached['data'], status=cached['status'])
 
+        # First time
         response = view_func(request, *args, **kwargs)
 
-        # store only for 2xx/4xx
-        if response.status_code < 500:
-            try:
-                IdempotencyKey.objects.create(
-                    key=key, user=request.user,
-                    method=request.method, path=request.path,
-                    request_hash=req_hash,
-                    response_status=response.status_code,
-                    response_body=json.dumps(response.data) if hasattr(response, 'data') else str(response.data)
-                )
-            except:
-                pass
+        # Only cache success responses
+        if response.status_code < 400:
+            cache.set(cache_key, {
+                'data': response.data,
+                'status': response.status_code
+            }, timeout=60*60*24) # 24 hours
+
         return response
     return wrapper
