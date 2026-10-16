@@ -54,3 +54,12 @@ class IdempotencyKey(models.Model):
 
     class Meta:
         unique_together = ('user', 'key')
+class BookingStatus:
+    PENDING = 'pending'
+    CONFIRMED = 'confirmed'
+    IN_PROGRESS = 'in_progress'
+    COMPLETED = 'completed'
+    CANCELLED = 'cancelled'
+
+# Alias for tests expecting Booking
+Booking = Ride
