@@ -86,3 +86,7 @@ CACHES = {
         "LOCATION": "unique-snowflake",
     }
 }
+MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/media/'
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+ALLOWED_CONTENT_TYPES = {"image/jpeg","image/png","video/mp4","application/pdf"}

@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/auth/', include('authentication.urls')),
     path('api/', include('user_profiles.urls')),
     path('api/saved-services/', include('saved_services.urls')),
+    path('api/media/', include('media_app.urls')),
 ]
 
 if settings.DEBUG:

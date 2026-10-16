@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     'authentication',
     'payments',
     'notifications',
+    'media_app',
     'rides',
     'saved_services',
     'user_profiles',
