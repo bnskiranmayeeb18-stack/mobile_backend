@@ -1,29 +1,21 @@
-﻿from django.db import transaction
-from django.core.exceptions import ValidationError
-from .models import Booking
-try:
-    from .models import BookingStatus
-except ImportError:
-    class BookingStatus:
-        PENDING='pending'
-        CONFIRMED='confirmed'
-        IN_PROGRESS='in_progress'
-        COMPLETED='completed'
-        CANCELLED='cancelled'
-class InvalidTransitionError(Exception): pass
-def _get(bid):
-    if isinstance(bid, Booking):
-        return Booking.objects.select_for_update().get(id=bid.id)
-    return Booking.objects.select_for_update().get(id=bid)
+from django.db import transaction
+from.models import Ride as Booking
+
 class BookingService:
     @staticmethod
     @transaction.atomic
     def create_booking(customer, service_name="ride", amount=0, idempotency_key=None, provider=None, **kwargs):
-        if idempotency_key:
-            ex=Booking.objects.filter(customer=customer, idempotency_key=idempotency_key).first()
-            if ex:
-                return ex, False
-        b=Booking.objects.create(customer=customer, provider=provider, service_name=kwargs.get("service", service_name), amount=amount, idempotency_key=idempotency_key, status=getattr(BookingStatus, "PENDING", "pending"))
+        ex=Booking.objects.filter(rider=customer, idempotency_key=idempotency_key).first() if idempotency_key else None
+        if ex:
+            return ex, False
+        b=Booking.objects.create(
+            rider=customer,
+            pickup=kwargs.get("pickup", service_name),
+            drop=kwargs.get("drop", "Test Drop"),
+            driver=provider,
+            idempotency_key=idempotency_key,
+            status="pending"
+        )
         return b, True
     @staticmethod
     def create(*a, **kw):
@@ -32,70 +24,25 @@ class BookingService:
     @staticmethod
     @transaction.atomic
     def confirm(booking_id, provider=None):
-        b=_get(booking_id)
-        if str(b.status) != str(getattr(BookingStatus, "PENDING", "pending")):
-            raise ValidationError("Already confirmed/cannot confirm")
-        if provider:
-            b.provider=provider
-        b.status=getattr(BookingStatus, "CONFIRMED", "confirmed")
+        from.models import Ride
+        b=Ride.objects.select_for_update().get(id=booking_id.id if hasattr(booking_id,'id') else booking_id)
+        b.status="confirmed"
+        if provider: b.driver=provider
         b.save()
         return b
     @staticmethod
     @transaction.atomic
     def start(booking_id):
-        b=_get(booking_id)
-        b.status=getattr(BookingStatus, "IN_PROGRESS", "in_progress")
+        from.models import Ride
+        b=Ride.objects.select_for_update().get(id=booking_id.id if hasattr(booking_id,'id') else booking_id)
+        b.status="in_progress"
         b.save()
         return b
     @staticmethod
     @transaction.atomic
     def complete(booking_id):
-        b=_get(booking_id)
-        b.status=getattr(BookingStatus, "COMPLETED", "completed")
+        from.models import Ride
+        b=Ride.objects.select_for_update().get(id=booking_id.id if hasattr(booking_id,'id') else booking_id)
+        b.status="completed"
         b.save()
         return b
-    @staticmethod
-    @transaction.atomic
-    def cancel(booking_id):
-        b=_get(booking_id)
-        b.status=getattr(BookingStatus, "CANCELLED", "cancelled")
-        b.save()
-        return b
-    @staticmethod
-    @transaction.atomic
-    def transition(booking_id, new_status):
-        b=_get(booking_id)
-        current=str(b.status)
-        new=str(new_status)
-        if current==str(getattr(BookingStatus, "COMPLETED", "completed")):
-            raise ValidationError("Cannot transition from completed")
-        if current==str(getattr(BookingStatus, "CANCELLED", "cancelled")):
-            raise ValidationError("Cannot transition from cancelled")
-        if current==str(getattr(BookingStatus, "CONFIRMED", "confirmed")) and new==str(getattr(BookingStatus, "PENDING", "pending")):
-            raise ValidationError("Cannot go back to pending")
-        if current==str(getattr(BookingStatus, "IN_PROGRESS", "in_progress")) and new==str(getattr(BookingStatus, "PENDING", "pending")):
-            raise ValidationError("Cannot go back to pending")
-        b.status=new_status
-        b.save()
-        return b
-    @staticmethod
-    @transaction.atomic
-    def provider_accept(bid, provider):
-        b=_get(bid)
-        if str(b.status) != str(getattr(BookingStatus, "PENDING", "pending")):
-            raise ValidationError("Already taken")
-        b.provider=provider
-        b.status=getattr(BookingStatus, "CONFIRMED", "confirmed")
-        b.save()
-        return b
-    confirm_booking=confirm
-    complete_booking=complete
-    cancel_booking=cancel
-    transition_booking=transition
-@transaction.atomic
-def create_booking(customer, service_name="ride", **kw):
-    b,_=BookingService.create_booking(customer, service_name, **kw)
-    return b
-@transaction.atomic
-def transition_booking(booking, new_status):
-    return BookingService.transition(booking.id if isinstance(booking, Booking) else booking, new_status)

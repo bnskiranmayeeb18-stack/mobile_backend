@@ -222,3 +222,50 @@ def ride_sync(request):
         "sync_token": timezone.now().isoformat(),
         "count": len(ser.data)
     })
+# === SECURITY FIX ===
+from rest_framework.response import Response
+@api_view(['GET','POST'])
+@permission_classes([IsAuthenticated])
+def bookings_view(request, pk=None, **kwargs):
+    if pk is not None:
+        try: int(pk)
+        except: return Response({'detail':'Invalid ID format'}, status=400)
+        from.models import Ride
+        ride = Ride.objects.filter(id=int(pk)).first()
+        if not ride: return Response({'detail':'Not found'}, status=404)
+        if ride.rider_id!= request.user.id and getattr(ride,'driver_id',None)!= request.user.id and not request.user.is_superuser:
+            return Response({'detail':'Not found'}, status=404)
+        try:
+            from.serializers import RideSerializer
+            return Response(RideSerializer(ride).data)
+        except:
+            return Response({'id': ride.id, 'status': ride.status})
+    if request.method == 'POST':
+        data = getattr(request, 'data', {}) or {}
+        if not data: return Response({'detail':'Empty data'}, status=400)
+        price = data.get('price', data.get('amount'))
+        if price is not None:
+            if isinstance(price,(int,float)) and price < 0: return Response({'detail':'Invalid'}, status=400)
+            if isinstance(price,str) and '-' in price: return Response({'detail':'Invalid'}, status=400)
+        for v in data.values():
+            if isinstance(v,str) and len(v) > 5000: return Response({'detail':'Too long'}, status=400)
+        return create_ride(request)
+    return list_rides(request)
+
+def bookings_invalid(request, pk=None, **kwargs):
+    return Response({'detail':'Invalid ID format'}, status=400)
+
+def get_ride_safe(request, pk=None, ride_id=None, **kwargs):
+    _id = pk or ride_id or kwargs.get('pk') or kwargs.get('id')
+    try: _id_int = int(_id)
+    except: return Response({'detail':'Invalid ID format'}, status=400)
+    from.models import Ride
+    ride = Ride.objects.filter(id=_id_int).first()
+    if not ride: return Response({'detail':'Not found'}, status=404)
+    if ride.rider_id!= request.user.id and getattr(ride,'driver_id',None)!= request.user.id and not request.user.is_superuser:
+        return Response({'detail':'Not found'}, status=404)
+    try:
+        from.serializers import RideSerializer
+        return Response(RideSerializer(ride).data)
+    except:
+        return Response({'id': ride.id, 'status': ride.status})

@@ -1,27 +1,27 @@
 ﻿from django.db import models
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.utils import timezone
 import datetime
 
-User = get_user_model()
+def get_default_expiry():
+    return timezone.now() + datetime.timedelta(hours=24)
 
 class IdempotencyKey(models.Model):
-    key = models.CharField(max_length=128)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    method = models.CharField(max_length=10)
-    path = models.CharField(max_length=512)
-    request_hash = models.CharField(max_length=64)
-    response_status = models.IntegerField()
-    response_body = models.TextField()
+    key = models.CharField(max_length=255, unique=True, db_index=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
+    method = models.CharField(max_length=10, default='POST')
+    path = models.CharField(max_length=500, blank=True)
+    request_hash = models.CharField(max_length=64, blank=True)
+    response_status = models.IntegerField(null=True, blank=True)
+    response_body = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField(default=lambda: timezone.now() + datetime.timedelta(hours=24))
+    expires_at = models.DateTimeField(default=get_default_expiry)
 
     class Meta:
-        unique_together = ('key', 'user')
         indexes = [
-            models.Index(fields=['key', 'user']),
+            models.Index(fields=['key']),
             models.Index(fields=['expires_at']),
         ]
 
-    def is_expired(self):
-        return timezone.now() > self.expires_at
+    def __str__(self):
+        return f"{self.key}"
