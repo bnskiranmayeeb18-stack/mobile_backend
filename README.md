@@ -1,54 +1,36 @@
-# Mobile Application Backend - Django REST Framework
+# Mobile Backend - Reliable Media Pipeline
 
-## Live API
-Base URL: https://mobile-backend-2kc1.onrender.com
-- Swagger UI: https://mobile-backend-2kc1.onrender.com/swagger/
-- Redoc: https://mobile-backend-2kc1.onrender.com/redoc/
-- Local Docs: http://127.0.0.1:8000/api/docs/
+> 5-Day Track (12-16 Oct 2026) - Secure, Observable, Resilient Media Uploads
 
-## Implemented APIs
+## 🎯 Objective
+Make media uploads reliable, secure, observable, integrated with mobile events.
 
-### 1. Auth APIs (JWT - SimpleJWT)
-- POST /api/v1/auth/register/ - User Registration
-- POST /api/v1/auth/login/ - User Login (JWT) - 5h access, 1d refresh
-- POST /api/v1/auth/logout/ - Logout
-- POST /api/v1/auth/password-change/ - Password Change
+## 📁 Architecture
 
-### 2. Profile APIs
-- GET /api/profile/ - Get User Profile
-- PUT /api/profile/update/ - Update Profile
-- POST /api/profile/upload/ - Image Upload
-- GET /api/profile/search/?q=keyword - Search Users
-- GET /api/profile/?page=1 - Pagination
+`Upload -> Validate -> Secure Storage -> Async Processing (Celery) -> Retrieval`
 
-### 3. Ride APIs - Sep 22 Sprint
-- CRUD: /api/v1/rides/ - Create, List, Retrieve
-- Search: Haversine 1.54km driver matching
-- Filtering: ?min_fare=&max_fare=&status=&ride_type=
-- Pagination & Sorting
-- Booking Model + APIs + Validation
-- Status Flow: REQUESTED -> ACCEPTED -> ONGOING -> COMPLETED
-- PATCH /api/rides/{id}/status/ - Update ride status
-- Fare Estimate: 250 for Nellore-Tirupati
+- **Storage Naming**: `{user_id}/{uuid}_{original_filename}` - no collisions
+- **Status Flow**: PENDING -> PROCESSING -> READY / FAILED
+- **Events**: `processing-started`, `processing-completed`, `processing-failed` with `correlation_id`
 
-### 4. Ride History & Cancel
-- Ride History APIs - 4 endpoints (401 without token - expected)
-- Ride Cancelled API Proof: docs/api-proof.png
+## 🔒 Security & Reliability
 
-## Tech Stack
-- Python, Django, Django REST Framework, Channels
-- JWT Authentication (rest_framework_simplejwt)
-- SQLite (Local) / PostgreSQL (Prod)
-- Deployed on Render
+- Auth + ownership check - 403 if not owner
+- File type whitelist: jpeg/png/mp4 - 10MB/100MB limits
+- Invalid/oversized -> `400` with `{error: {code, message, correlation_id}}`
+- Idempotent: `select_for_update()` + idempotency_key - retries don't duplicate
+- Retries: 3x backoff, no duplicate side-effects
 
-## Testing - TASK 7 DONE ✅
+## 📊 Observability
 
-### Automated Testing - 10 Modules x 2 Scenarios = 20/20 PASS
+- Structured logs: `correlation_id`, `media_id`, `user_id`, `event`
+- Status endpoint: `GET /api/media/{id}/status/`
+- Mobile polls status, reflects accurately
+
+## 🚀 Setup
+
 ```bash
-python manage.py check
-# System check identified no issues (0 silenced).
-
-python manage.py test rides.tests -v 0
-# Ran 20 tests in 11.886s - OK
-
-Add-Content README.md "`n## Database Design`nSee docs/DATABASE_DESIGN.md"
+pip install -r requirements.txt
+python manage.py migrate
+celery -A core worker -l info
+python manage.py runserver

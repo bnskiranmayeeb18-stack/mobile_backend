@@ -83,3 +83,10 @@ CACHES = {
     }
 }
 
+
+# Celery - Local dev without Redis/Docker
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_BROKER_URL = 'memory://'
+CELERY_RESULT_BACKEND = 'cache+memory://'
+CELERY_TASK_TIME_LIMIT = 30
