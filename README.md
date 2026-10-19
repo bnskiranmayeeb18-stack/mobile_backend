@@ -54,6 +54,7 @@ pip install -r requirements.txt
 **Proofs:**
 - 201 id: 5b892c7d-bfc4-4972-ae48-bd67b3c6da69
 - 200 Duplicate id: 5b892c7d... (29ms) & 196e8bfc... (9ms) - SAFE RETRY
+- 
 - correlation_id: eba83113..., ca8e7a41...
 
 **Known Limitations:**
@@ -62,3 +63,22 @@ pip install -r requirements.txt
 - 2MB hardcoded
 
 **Status: ALL PASS
+# Mobile Backend - Media Processing
+
+## Day 3 - Idempotent Event Processing ✅ COMPLETE
+
+### Overview
+Handles duplicate and out-of-order webhook events without creating duplicate results.
+
+### Architecture
+- **Media** model: Stores uploaded media status
+- **ProcessedEvent** model: Event ledger with UNIQUE(event_id)
+    - Prevents duplicate processing at DB level
+    - Tracks media_id, event_type, result, correlation_id
+
+### Idempotency Logic (media_upload/views.py)
+
+1. **Duplicate Detection (Fast Path)**
+   ```python
+   PROCESSED_EVENTS = {} # in-memory
+   if event_id in PROCESSED_EVENTS: return 200 Duplicate
