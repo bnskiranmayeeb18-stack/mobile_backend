@@ -148,3 +148,24 @@ Customers browse many services but have no way to bookmark/favorite for later. T
 - EC4: Long service_name >255 -> 400
 - EC5: Empty payload -> 400
 - EC6: Concurrent duplicate saves -> only one succeeds (DB unique constraint)
+@"
+## Day 2 - 20 Oct 2026 - Reliable Transfer
+
+**Objective:** Interrupted transfer resume without corrupting final state
+
+**Decision:** Safe retry via Idempotency-Key (sample workflow supports idempotent POST, not chunked). No duplicate rows, return same ID with 200 Duplicate.
+
+**Execution:**
+1. python manage.py runserver 8000
+2. POST /api/media/upload/ with Idempotency-Key header
+3. Retry same key -> 200 Duplicate, same ID, 9-29ms (proves no corruption)
+4. Size test 3MB -> 400, Type test txt -> 400
+
+**Proofs:** 201 (id: 5b892c7d...), 200 Duplicate (id: 5b892c7d... & 196e8bfc...), correlation_id tracing
+
+**Known Limitations:**
+- No chunk/resume (single file POST), bounded retries via FAILED->STAGING allowed
+- In-memory idempotency map, not persistent DB (would use Redis in prod)
+- 2MB limit hardcoded, not configurable
+
+
