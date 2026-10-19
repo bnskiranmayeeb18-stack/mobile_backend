@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     'rides',
     'saved_services',
     'user_profiles',
+    'media_upload',
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

@@ -32,3 +32,4 @@ python manage.py migrate
 celery -A mobile_backend worker -l info
 
 ## Acceptance: ALL PASS
+Decisions: Django + Celery + IdempotencyExecution steps: how to run server, workerLegal states: PENDING, PROCESSING, COMPLETED, FAILEDFailure transitions: invalid file -> FAILEDKnown limitations: file size <2MB
