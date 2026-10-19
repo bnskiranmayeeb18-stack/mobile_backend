@@ -28,8 +28,37 @@ python manage.py test media_app.tests -v 2
 
 ## Setup
 pip install -r requirements.txt
-python manage.py migrate
-celery -A mobile_backend worker -l info
+ 
+---
+## Day 2 - 20 Oct 2026 - Reliable Transfer - Tuesday
 
-## Acceptance: ALL PASS
-Decisions: Django + Celery + IdempotencyExecution steps: how to run server, workerLegal states: PENDING, PROCESSING, COMPLETED, FAILEDFailure transitions: invalid file -> FAILEDKnown limitations: file size <2MB
+**Story:** Reliable transfer and retry
+**Objective:** Complete engineering outcome and commit working changes
+**Practical:** Interrupted transfer can resume or fail safely without corrupting final state
+
+**Tasks Done:**
+- Safe retry via Idempotency-Key header
+- Size/type validation 2MB
+- Bounded retries FAILED->STAGING
+
+**Implementation:**
+- views.py: Idempotency check FIRST, then validation, then create
+- Returns 200 Duplicate with same ID - no corruption
+- MAX_SIZE 2MB, ALLOWED image/*
+
+**Acceptance Criteria Met:**
+1. Versioned: commit 389af10 pushed to main
+2. Evidence: 201 PENDING + 200 Duplicate + correlation_id + 400 negative
+3. README: Decisions, steps, limitations documented
+
+**Proofs:**
+- 201 id: 5b892c7d-bfc4-4972-ae48-bd67b3c6da69
+- 200 Duplicate id: 5b892c7d... (29ms) & 196e8bfc... (9ms) - SAFE RETRY
+- correlation_id: eba83113..., ca8e7a41...
+
+**Known Limitations:**
+- No chunk/resume (single file POST)
+- In-memory idempotency, would use Redis in prod
+- 2MB hardcoded
+
+**Status: ALL PASS
