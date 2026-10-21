@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'media_upload',
 ]
 MIDDLEWARE = [
+    'core.middleware.CorrelationIdMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
