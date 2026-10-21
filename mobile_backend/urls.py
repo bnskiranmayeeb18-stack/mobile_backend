@@ -1,12 +1,13 @@
-﻿from django.contrib import admin
+from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/media/', include('media_upload.urls')),
-    # If you have other apps, keep them:
-    # path('api/', include('core.urls')),
+    path('api/rides/', include('rides.urls')),
 ]
 
-# Debug: print URLs
-# Run: python manage.py show_urls  (if django-extensions installed)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
